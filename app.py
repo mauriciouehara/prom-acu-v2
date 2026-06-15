@@ -62,6 +62,37 @@ def show_medical_warning() -> None:
     st.warning(MEDICAL_WARNING, icon="⚠️")
 
 
+def render_initial_classification() -> None:
+    """Capture the initial area of interest for the current session."""
+    st.title("¿Qué desea mejorar?")
+    st.write("Seleccione la opción que mejor representa su motivo principal.")
+
+    selected_category = st.radio(
+        "Área de interés",
+        [
+            "Dolor y movilidad",
+            "Sueño",
+            "Estrés o ansiedad",
+            "Estado de ánimo",
+            "Respiración",
+            "Digestión",
+            "Salud urinaria o genital",
+            "Otro",
+        ],
+        index=None,
+        key="initial_category_selection",
+        label_visibility="collapsed",
+    )
+    if st.button(
+        "Continuar",
+        type="primary",
+        use_container_width=True,
+        disabled=selected_category is None,
+    ):
+        st.session_state["selected_initial_category"] = selected_category
+        st.rerun()
+
+
 def patient_options(patients: pd.DataFrame) -> dict[str, int]:
     """Build pseudonymized patient labels mapped to database identifiers."""
     return {
@@ -101,7 +132,7 @@ def render_home() -> None:
 
 
 def render_patient_registration() -> None:
-    st.header("Registro de paciente")
+    st.header("Nuevo paciente")
     show_medical_warning()
 
     col1, col2 = st.columns(2)
@@ -210,7 +241,7 @@ def render_patient_registration() -> None:
 
 
 def render_session_registration() -> None:
-    st.header("Registro de sesión")
+    st.header("Seguimiento del paciente")
     show_medical_warning()
     patients = get_patients()
 
@@ -362,7 +393,7 @@ def render_womac_assessment() -> None:
             return "Severa"
         return "Muy severa"
 
-    st.header("Evaluación WOMAC")
+    st.header("Evaluación de dolor y movilidad")
     show_medical_warning()
     patients = get_patients()
 
@@ -1001,7 +1032,7 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
 
 
 def render_dashboard() -> None:
-    st.header("Dashboard médico")
+    st.header("Resultados")
     show_medical_warning()
     st.warning(PSEUDONYMIZATION_WARNING)
     data = enrich_dashboard_data(get_dashboard_data())
@@ -1297,7 +1328,7 @@ def render_dashboard() -> None:
     )
 
 def render_report() -> None:
-    st.header("Informe clínico")
+    st.header("Informe")
     show_medical_warning()
     patients = get_patients()
 
@@ -1364,17 +1395,35 @@ def main() -> None:
         st.error(f"No se pudo inicializar la base de datos: {error}")
         st.stop()
 
+    selected_initial_category = st.session_state.get(
+        "selected_initial_category"
+    )
+    if not selected_initial_category:
+        render_initial_classification()
+        return
+
+    st.success("Perfecto. Vamos a completar una breve evaluación.")
+    if selected_initial_category != "Dolor y movilidad":
+        st.info(
+            "Módulo en desarrollo. Gracias por participar en la prueba."
+        )
+        if st.button("Elegir otra opción"):
+            st.session_state.pop("selected_initial_category", None)
+            st.session_state.pop("initial_category_selection", None)
+            st.rerun()
+        return
+
     with st.sidebar:
         st.title("PROM-ACU")
         page = st.radio(
             "Navegación",
             [
                 "Inicio",
-                "Registro de paciente",
-                "Registro de sesión",
-                "Evaluación WOMAC",
-                "Dashboard médico",
-                "Informe clínico",
+                "Nuevo paciente",
+                "Seguimiento del paciente",
+                "Evaluación de dolor y movilidad",
+                "Resultados",
+                "Informe",
             ],
         )
         st.divider()
@@ -1382,11 +1431,11 @@ def main() -> None:
 
     pages = {
         "Inicio": render_home,
-        "Registro de paciente": render_patient_registration,
-        "Registro de sesión": render_session_registration,
-        "Evaluación WOMAC": render_womac_assessment,
-        "Dashboard médico": render_dashboard,
-        "Informe clínico": render_report,
+        "Nuevo paciente": render_patient_registration,
+        "Seguimiento del paciente": render_session_registration,
+        "Evaluación de dolor y movilidad": render_womac_assessment,
+        "Resultados": render_dashboard,
+        "Informe": render_report,
     }
     pages[page]()
 
