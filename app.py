@@ -192,8 +192,57 @@ def render_problem_details_step() -> None:
             "duration": duration,
             "intensity": int(intensity),
         }
-        st.success("Gracias. Su información fue registrada correctamente.")
-        st.session_state["guided_step"] = "main_app"
+        st.session_state["guided_step"] = "thanks"
+        st.rerun()
+
+
+def clear_guided_flow() -> None:
+    """Clear temporary guided intake data from the Streamlit session."""
+    for key in (
+        "selected_initial_category",
+        "initial_category_selection",
+        "guided_personal_data",
+        "guided_problem_details",
+        "guided_step",
+    ):
+        st.session_state.pop(key, None)
+
+
+def render_thanks_step() -> None:
+    """Render the patient-friendly completion screen."""
+    hide_sidebar()
+    st.title("Gracias")
+    st.success("Su información fue registrada correctamente.")
+    st.write(
+        "El Dr. Mauricio Uehara podrá revisar estos datos para orientar mejor "
+        "el seguimiento."
+    )
+
+    personal_data = st.session_state.get("guided_personal_data", {})
+    problem_details = st.session_state.get("guided_problem_details", {})
+    st.markdown("### Resumen")
+    st.write(
+        f"**Área que desea mejorar:** "
+        f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
+    )
+    st.write(f"**Nombre:** {personal_data.get('name', 'Sin completar')}")
+    st.write(
+        f"**Problema principal:** "
+        f"{problem_details.get('problem', 'Sin completar')}"
+    )
+    st.write(
+        f"**Tiempo de evolución:** "
+        f"{problem_details.get('duration', 'Sin completar')}"
+    )
+    intensity = problem_details.get("intensity", "Sin completar")
+    st.write(f"**Intensidad actual:** {intensity}")
+
+    if st.button(
+        "Enviar otra respuesta",
+        type="primary",
+        use_container_width=True,
+    ):
+        clear_guided_flow()
         st.rerun()
 
 
@@ -1510,6 +1559,10 @@ def main() -> None:
 
     if guided_step == "problem_details":
         render_problem_details_step()
+        return
+
+    if guided_step == "thanks":
+        render_thanks_step()
         return
 
     with st.sidebar:
