@@ -144,6 +144,55 @@ def render_personal_data_step() -> None:
             "sex": guided_sex,
             "phone": guided_phone.strip(),
         }
+        st.session_state["guided_step"] = "problem_details"
+        st.rerun()
+
+
+def render_problem_details_step() -> None:
+    """Collect the main problem in patient-friendly language."""
+    hide_sidebar()
+    st.title("Cuéntenos su problema")
+
+    with st.form("guided_problem_details_form"):
+        problem = st.text_input(
+            "¿Cuál es el problema que desea tratar?",
+            placeholder="Ejemplo: dolor de rodilla, ansiedad, insomnio, migraña.",
+        )
+        duration = st.selectbox(
+            "¿Hace cuánto tiempo lo tiene?",
+            [
+                "Menos de 1 semana",
+                "Menos de 1 mes",
+                "Más de 3 meses",
+                "Más de 1 año",
+            ],
+            index=None,
+            placeholder="Seleccione una opción",
+        )
+        intensity = st.slider(
+            "¿Qué intensidad tiene hoy?",
+            min_value=0,
+            max_value=10,
+            value=0,
+            help="0 = nada, 10 = máximo.",
+        )
+        st.caption("0 = nada, 10 = máximo.")
+        submitted = st.form_submit_button(
+            "Guardar información",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if submitted:
+        if not problem.strip() or not duration:
+            st.error("Complete el problema y el tiempo de evolución.")
+            return
+        st.session_state["guided_problem_details"] = {
+            "problem": problem.strip(),
+            "duration": duration,
+            "intensity": int(intensity),
+        }
+        st.success("Gracias. Su información fue registrada correctamente.")
         st.session_state["guided_step"] = "main_app"
         st.rerun()
 
@@ -1457,6 +1506,10 @@ def main() -> None:
 
     if guided_step == "personal_data":
         render_personal_data_step()
+        return
+
+    if guided_step == "problem_details":
+        render_problem_details_step()
         return
 
     with st.sidebar:
