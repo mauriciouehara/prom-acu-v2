@@ -62,22 +62,36 @@ def show_medical_warning() -> None:
     st.warning(MEDICAL_WARNING, icon="⚠️")
 
 
+def hide_sidebar() -> None:
+    """Hide Streamlit sidebar during the guided intake screens."""
+    st.markdown(
+        """
+        <style>
+            [data-testid="stSidebar"],
+            [data-testid="collapsedControl"] {
+                display: none;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_initial_classification() -> None:
     """Capture the initial area of interest for the current session."""
+    hide_sidebar()
     st.title("¿Qué desea mejorar?")
-    st.write("Seleccione la opción que mejor representa su motivo principal.")
 
     selected_category = st.radio(
         "Área de interés",
         [
             "Dolor y movilidad",
-            "Sueño",
+            "Dormir mejor",
             "Estrés o ansiedad",
             "Estado de ánimo",
             "Respiración",
             "Digestión",
-            "Salud urinaria o genital",
-            "Otro",
+            "Salud urinaria o íntima",
         ],
         index=None,
         key="initial_category_selection",
@@ -90,6 +104,47 @@ def render_initial_classification() -> None:
         disabled=selected_category is None,
     ):
         st.session_state["selected_initial_category"] = selected_category
+        st.session_state["guided_step"] = "personal_data"
+        st.rerun()
+
+
+def render_personal_data_step() -> None:
+    """Collect simple personal data for the guided experience."""
+    hide_sidebar()
+    st.title("Datos personales")
+    st.success("Perfecto. Vamos a completar una breve evaluación.")
+
+    with st.form("guided_personal_data_form"):
+        guided_name = st.text_input("¿Cómo se llama?")
+        guided_age = st.number_input("Edad", min_value=0, max_value=120, value=18)
+        guided_sex = st.selectbox(
+            "Sexo",
+            [
+                "Femenino",
+                "Masculino",
+                "Intersexual",
+                "Otro",
+                "Prefiere no informar",
+            ],
+        )
+        guided_phone = st.text_input("Teléfono", max_chars=40)
+        submitted = st.form_submit_button(
+            "Siguiente",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if submitted:
+        if not guided_name.strip():
+            st.error("Ingrese su nombre para continuar.")
+            return
+        st.session_state["guided_personal_data"] = {
+            "name": guided_name.strip(),
+            "age": int(guided_age),
+            "sex": guided_sex,
+            "phone": guided_phone.strip(),
+        }
+        st.session_state["guided_step"] = "main_app"
         st.rerun()
 
 
@@ -1395,22 +1450,13 @@ def main() -> None:
         st.error(f"No se pudo inicializar la base de datos: {error}")
         st.stop()
 
-    selected_initial_category = st.session_state.get(
-        "selected_initial_category"
-    )
-    if not selected_initial_category:
+    guided_step = st.session_state.get("guided_step", "initial")
+    if guided_step == "initial":
         render_initial_classification()
         return
 
-    st.success("Perfecto. Vamos a completar una breve evaluación.")
-    if selected_initial_category != "Dolor y movilidad":
-        st.info(
-            "Módulo en desarrollo. Gracias por participar en la prueba."
-        )
-        if st.button("Elegir otra opción"):
-            st.session_state.pop("selected_initial_category", None)
-            st.session_state.pop("initial_category_selection", None)
-            st.rerun()
+    if guided_step == "personal_data":
+        render_personal_data_step()
         return
 
     with st.sidebar:
