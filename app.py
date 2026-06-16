@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 import plotly.express as px
@@ -719,6 +719,7 @@ def clear_guided_flow() -> None:
         "guided_follow_up_orientation",
         "guided_adaptive_details",
         "guided_treatment_expectations",
+        "guided_evaluation_recorded",
         "guided_step",
     ):
         st.session_state.pop(key, None)
@@ -726,9 +727,63 @@ def clear_guided_flow() -> None:
         st.session_state.pop(f"treatment_expectation_option_{index}", None)
 
 
+def store_completed_guided_evaluation() -> None:
+    """Keep completed guided evaluations in session for the professional panel."""
+    if st.session_state.get("guided_evaluation_recorded"):
+        return
+
+    personal_data = st.session_state.get("guided_personal_data", {})
+    problem_details = st.session_state.get("guided_problem_details", {})
+    follow_up_orientation = st.session_state.get(
+        "guided_follow_up_orientation",
+        {},
+    )
+    treatment_expectations = st.session_state.get(
+        "guided_treatment_expectations",
+        {},
+    )
+    completed_evaluations = st.session_state.setdefault(
+        "completed_guided_evaluations",
+        [],
+    )
+    completed_evaluations.append(
+        {
+            "Fecha/hora": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "Nombre": personal_data.get("name", "Sin completar"),
+            "Motivo principal": st.session_state.get(
+                "selected_initial_category",
+                "Sin completar",
+            ),
+            "Problema o síntoma principal": problem_details.get(
+                "problem",
+                "Sin completar",
+            ),
+            "Tiempo de evolución": problem_details.get(
+                "duration",
+                "Sin completar",
+            ),
+            "Impacto actual": problem_details.get("intensity"),
+            "Limitación diaria": follow_up_orientation.get(
+                "daily_limitation",
+                "Sin completar",
+            ),
+            "Medicación relacionada": follow_up_orientation.get(
+                "medication_related",
+                "Sin completar",
+            ),
+            "Objetivos principales seleccionados": treatment_expectations.get(
+                "expectations",
+                [],
+            ),
+        }
+    )
+    st.session_state["guided_evaluation_recorded"] = True
+
+
 def render_thanks_step() -> None:
     """Render the patient-friendly completion screen."""
     hide_sidebar()
+    store_completed_guided_evaluation()
     st.title("Evaluación completada con éxito")
     st.write(
         "Gracias por dedicar unos minutos a responder.\n\n"
@@ -814,6 +869,146 @@ def patient_options(patients: pd.DataFrame) -> dict[str, int]:
         str(row["patient_code"]): int(row["id"])
         for _, row in patients.iterrows()
     }
+
+
+def count_values_table(
+    evaluations: list[dict],
+    field: str,
+    labels: list[str] | None = None,
+) -> pd.DataFrame:
+    """Build a simple count table for professional panel summaries."""
+    values = [evaluation.get(field) for evaluation in evaluations]
+    if labels is None:
+        labels = sorted(
+            {
+                value
+                for value in values
+                if value not in (None, "", "Sin completar")
+            }
+        )
+    rows = [
+        {field: label, "Cantidad": values.count(label)}
+        for label in labels
+    ]
+    return pd.DataFrame(rows)
+
+
+def render_professional_panel() -> None:
+    """Render session-based summaries for completed guided evaluations."""
+    st.header("Panel profesional")
+    evaluations = st.session_state.get("completed_guided_evaluations", [])
+
+    if not evaluations:
+        st.info("Todavía no hay evaluaciones completadas en esta sesión.")
+        return
+
+    evaluations_df = pd.DataFrame(evaluations)
+    st.metric("Total de evaluaciones completadas", len(evaluations))
+
+    st.subheader("Motivos principales más frecuentes")
+    reasons_table = count_values_table(evaluations, "Motivo principal")
+    if reasons_table.empty:
+        st.info("Sin datos de motivo principal.")
+    else:
+        st.dataframe(
+            reasons_table.rename(columns={"Motivo principal": "Motivo principal"}),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    impact_values = pd.to_numeric(
+        evaluations_df["Impacto actual"],
+        errors="coerce",
+    ).dropna()
+    average_impact = impact_values.mean() if not impact_values.empty else None
+    st.metric(
+        "Impacto actual promedio",
+        f"{average_impact:.1f} de 10" if average_impact is not None else "Sin datos",
+    )
+
+    st.subheader("Tiempo de evolución")
+    duration_table = count_values_table(
+        evaluations,
+        "Tiempo de evolución",
+        [
+            "Menos de 1 semana",
+            "Menos de 1 mes",
+            "Más de 3 meses",
+            "Más de 1 año",
+        ],
+    )
+    st.dataframe(duration_table, hide_index=True, use_container_width=True)
+
+    st.subheader("Medicación relacionada")
+    medication_rows = []
+    medication_names = []
+    medication_values = [
+        evaluation.get("Medicación relacionada", "Sin completar")
+        for evaluation in evaluations
+    ]
+    for label in ["No", "Sí", "No estoy seguro/a"]:
+        if label == "Sí":
+            count = sum(
+                value not in ("No", "No estoy seguro/a", "Sin completar", "", None)
+                for value in medication_values
+            )
+        else:
+            count = medication_values.count(label)
+        medication_rows.append({"Medicación relacionada": label, "Cantidad": count})
+
+    for value in medication_values:
+        if value not in ("No", "No estoy seguro/a", "Sin completar", "", None):
+            medication_names.append({"Medicamento informado": value})
+
+    st.dataframe(
+        pd.DataFrame(medication_rows),
+        hide_index=True,
+        use_container_width=True,
+    )
+    if medication_names:
+        st.dataframe(
+            pd.DataFrame(medication_names),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    st.subheader("Expectativas principales seleccionadas")
+    expectation_counts: dict[str, int] = {}
+    for evaluation in evaluations:
+        for objective in evaluation.get("Objetivos principales seleccionados", []):
+            expectation_counts[objective] = expectation_counts.get(objective, 0) + 1
+    expectations_table = pd.DataFrame(
+        [
+            {"Objetivo": objective, "Cantidad": count}
+            for objective, count in sorted(expectation_counts.items())
+        ]
+    )
+    if expectations_table.empty:
+        st.info("Sin datos de expectativas principales.")
+    else:
+        st.dataframe(expectations_table, hide_index=True, use_container_width=True)
+
+    st.subheader("Listado de evaluaciones")
+    display_df = evaluations_df.copy()
+    display_df["Objetivos principales seleccionados"] = display_df[
+        "Objetivos principales seleccionados"
+    ].apply(lambda values: ", ".join(values) if values else "Sin completar")
+    st.dataframe(
+        display_df[
+            [
+                "Fecha/hora",
+                "Nombre",
+                "Motivo principal",
+                "Problema o síntoma principal",
+                "Tiempo de evolución",
+                "Impacto actual",
+                "Limitación diaria",
+                "Objetivos principales seleccionados",
+            ]
+        ],
+        hide_index=True,
+        use_container_width=True,
+    )
 
 
 def render_home() -> None:
@@ -2153,6 +2348,7 @@ def main() -> None:
             "Navegación",
             [
                 "Inicio",
+                "Panel profesional",
                 "Nuevo paciente",
                 "Seguimiento del paciente",
                 "Evaluación de dolor y movilidad",
@@ -2165,6 +2361,7 @@ def main() -> None:
 
     pages = {
         "Inicio": render_home,
+        "Panel profesional": render_professional_panel,
         "Nuevo paciente": render_patient_registration,
         "Seguimiento del paciente": render_session_registration,
         "Evaluación de dolor y movilidad": render_womac_assessment,
