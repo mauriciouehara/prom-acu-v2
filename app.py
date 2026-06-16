@@ -316,6 +316,61 @@ def render_problem_details_step() -> None:
             "duration": duration,
             "intensity": int(intensity),
         }
+        st.session_state["guided_step"] = "follow_up_orientation"
+        st.rerun()
+
+
+def render_follow_up_orientation_step() -> None:
+    """Collect simple context to orient the patient follow-up."""
+    hide_sidebar()
+    st.title("Para orientar mejor el seguimiento")
+
+    with st.form("guided_follow_up_orientation_form"):
+        worsens_with = st.text_input(
+            "¿Qué empeora su problema?",
+            placeholder="Ejemplo: caminar, estrés, comida, frío, noche, esfuerzo.",
+        )
+        improves_with = st.text_input(
+            "¿Qué mejora su problema?",
+            placeholder="Ejemplo: reposo, calor, medicación, masajes, dormir.",
+        )
+        medication_related = st.radio(
+            "¿Toma actualmente algún medicamento relacionado con este problema?",
+            ["No", "Sí", "No estoy seguro/a"],
+            index=None,
+        )
+        medication_name = ""
+        if medication_related == "Sí":
+            medication_name = st.text_input("¿Cuál?")
+        daily_limitation = st.radio(
+            "¿Este problema limita sus actividades diarias?",
+            ["No", "Un poco", "Bastante", "Mucho"],
+            index=None,
+        )
+        submitted = st.form_submit_button(
+            "Finalizar",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if submitted:
+        if not medication_related or not daily_limitation:
+            st.error("Complete las opciones para finalizar.")
+            return
+        if medication_related == "Sí" and not medication_name.strip():
+            st.error("Indique cuál medicamento toma.")
+            return
+
+        medication_summary = medication_related
+        if medication_related == "Sí":
+            medication_summary = medication_name.strip()
+
+        st.session_state["guided_follow_up_orientation"] = {
+            "worsens_with": worsens_with.strip() or "Sin completar",
+            "improves_with": improves_with.strip() or "Sin completar",
+            "medication_related": medication_summary,
+            "daily_limitation": daily_limitation,
+        }
         st.session_state["guided_step"] = "thanks"
         st.rerun()
 
@@ -329,6 +384,7 @@ def clear_guided_flow() -> None:
         "other_health_problem_description",
         "guided_personal_data",
         "guided_problem_details",
+        "guided_follow_up_orientation",
         "guided_step",
     ):
         st.session_state.pop(key, None)
@@ -346,6 +402,10 @@ def render_thanks_step() -> None:
 
     personal_data = st.session_state.get("guided_personal_data", {})
     problem_details = st.session_state.get("guided_problem_details", {})
+    follow_up_orientation = st.session_state.get(
+        "guided_follow_up_orientation",
+        {},
+    )
     st.markdown("### Resumen")
     st.write(
         f"**Motivo principal:** "
@@ -362,6 +422,22 @@ def render_thanks_step() -> None:
     )
     intensity = problem_details.get("intensity", "Sin completar")
     st.write(f"**Impacto actual:** {intensity} de 10")
+    st.write(
+        f"**Empeora con:** "
+        f"{follow_up_orientation.get('worsens_with', 'Sin completar')}"
+    )
+    st.write(
+        f"**Mejora con:** "
+        f"{follow_up_orientation.get('improves_with', 'Sin completar')}"
+    )
+    st.write(
+        f"**Medicación relacionada:** "
+        f"{follow_up_orientation.get('medication_related', 'Sin completar')}"
+    )
+    st.write(
+        f"**Limitación diaria:** "
+        f"{follow_up_orientation.get('daily_limitation', 'Sin completar')}"
+    )
 
     if st.button(
         "Enviar otra respuesta",
@@ -1685,6 +1761,10 @@ def main() -> None:
 
     if guided_step == "problem_details":
         render_problem_details_step()
+        return
+
+    if guided_step == "follow_up_orientation":
+        render_follow_up_orientation_step()
         return
 
     if guided_step == "thanks":
