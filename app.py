@@ -171,30 +171,135 @@ def render_problem_details_step() -> None:
     hide_sidebar()
     st.title("Cuéntenos su problema")
 
+    selected_category = st.session_state.get("selected_initial_category", "")
+    duration_options = [
+        "Menos de 1 semana",
+        "Menos de 1 mes",
+        "Más de 3 meses",
+        "Más de 1 año",
+    ]
+    category_fields = {
+        "Insomnio": {
+            "label": "¿Qué problema tiene con el sueño?",
+            "options": [
+                "Me cuesta dormir",
+                "Me despierto varias veces",
+                "Me despierto muy temprano",
+                "Duermo pero no descanso",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Estrés o ansiedad": {
+            "label": "¿Qué siente principalmente?",
+            "options": [
+                "Nerviosismo",
+                "Preocupación excesiva",
+                "Palpitaciones o tensión",
+                "Ataques de ansiedad",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Tristeza o depresión": {
+            "label": "¿Qué siente principalmente?",
+            "options": [
+                "Tristeza",
+                "Falta de ganas",
+                "Cansancio emocional",
+                "Pérdida de interés",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Respiración": {
+            "label": "¿Cuál es el problema principal?",
+            "options": [
+                "Falta de aire",
+                "Tos",
+                "Alergia respiratoria",
+                "Asma",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Digestión": {
+            "label": "¿Cuál es el problema principal?",
+            "options": [
+                "Acidez o reflujo",
+                "Distensión abdominal",
+                "Estreñimiento",
+                "Diarrea",
+                "Náuseas",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Salud urinaria, próstata o ginecológica": {
+            "label": "¿Cuál es el problema principal?",
+            "options": [
+                "Orinar frecuentemente",
+                "Ardor al orinar",
+                "Dolor pélvico",
+                "Síntomas prostáticos",
+                "Síntomas ginecológicos",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+    }
+
     with st.form("guided_problem_details_form"):
-        problem = st.text_input(
-            "¿Cuál es el problema que desea tratar?",
-            placeholder="Ejemplo: dolor de rodilla, ansiedad, insomnio, migraña.",
-        )
+        if selected_category == "Otro problema de salud":
+            problem = st.session_state.get("other_health_problem_description", "")
+            st.write(f"**Problema o síntoma principal:** {problem}")
+        elif selected_category == "Dolor y movilidad":
+            problem = st.text_input(
+                "¿Cuál es el problema que desea tratar?",
+                placeholder=(
+                    "Ejemplo: dolor lumbar, dolor de rodilla, dolor cervical."
+                ),
+            )
+            slider_label = "¿Qué intensidad tiene hoy?"
+            caption = "0 = nada, 10 = máximo."
+        else:
+            field_config = category_fields.get(selected_category, {})
+            problem = st.selectbox(
+                field_config.get("label", "¿Cuál es el problema principal?"),
+                field_config.get("options", ["Otro"]),
+                index=None,
+                placeholder="Seleccione una opción",
+            )
+            slider_label = field_config.get(
+                "slider_label",
+                "¿Cuánto afecta su vida diaria?",
+            )
+            caption = field_config.get("caption", "0 = nada, 10 = muchísimo.")
+
+        if selected_category == "Otro problema de salud":
+            slider_label = "¿Cuánto afecta su vida diaria?"
+            caption = "0 = nada, 10 = muchísimo."
+
         duration = st.selectbox(
             "¿Hace cuánto tiempo lo tiene?",
-            [
-                "Menos de 1 semana",
-                "Menos de 1 mes",
-                "Más de 3 meses",
-                "Más de 1 año",
-            ],
+            duration_options,
             index=None,
             placeholder="Seleccione una opción",
         )
         intensity = st.slider(
-            "¿Qué intensidad tiene hoy?",
+            slider_label,
             min_value=0,
             max_value=10,
             value=0,
-            help="0 = nada, 10 = máximo.",
+            help=caption,
         )
-        st.caption("0 = nada, 10 = máximo.")
+        st.caption(caption)
         submitted = st.form_submit_button(
             "Guardar información",
             type="primary",
@@ -202,11 +307,12 @@ def render_problem_details_step() -> None:
         )
 
     if submitted:
-        if not problem.strip() or not duration:
+        problem_text = problem.strip() if isinstance(problem, str) else problem
+        if not problem_text or not duration:
             st.error("Complete el problema y el tiempo de evolución.")
             return
         st.session_state["guided_problem_details"] = {
-            "problem": problem.strip(),
+            "problem": problem_text,
             "duration": duration,
             "intensity": int(intensity),
         }
@@ -241,12 +347,12 @@ def render_thanks_step() -> None:
     problem_details = st.session_state.get("guided_problem_details", {})
     st.markdown("### Resumen")
     st.write(
-        f"**Área que desea mejorar:** "
+        f"**Motivo principal:** "
         f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
     )
     st.write(f"**Nombre:** {personal_data.get('name', 'Sin completar')}")
     st.write(
-        f"**Problema principal:** "
+        f"**Problema o síntoma principal:** "
         f"{problem_details.get('problem', 'Sin completar')}"
     )
     st.write(
@@ -254,7 +360,7 @@ def render_thanks_step() -> None:
         f"{problem_details.get('duration', 'Sin completar')}"
     )
     intensity = problem_details.get("intensity", "Sin completar")
-    st.write(f"**Intensidad actual:** {intensity}")
+    st.write(f"**Impacto actual:** {intensity} de 10")
 
     if st.button(
         "Enviar otra respuesta",
