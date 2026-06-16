@@ -77,6 +77,40 @@ def hide_sidebar() -> None:
     )
 
 
+def render_informed_consent_step() -> None:
+    """Show the informed consent before starting the guided intake."""
+    hide_sidebar()
+    st.title("Consentimiento informado")
+    st.write(
+        "Esta aplicación permite registrar información previa o complementaria "
+        "a la consulta médica.\n\n"
+        "Los datos serán utilizados por el Dr. Mauricio Uehara para orientar "
+        "el seguimiento clínico.\n\n"
+        "La aplicación puede utilizar asistencia por inteligencia artificial "
+        "para organizar la información ingresada, pero no reemplaza la "
+        "evaluación médica presencial, no emite diagnósticos automáticos y "
+        "no indica tratamientos por sí sola.\n\n"
+        "Los datos personales serán tratados de manera confidencial. Para "
+        "análisis, informes o exportaciones, la información clínica deberá "
+        "utilizarse en forma seudonimizada o anonimizada, evitando identificar "
+        "directamente al paciente."
+    )
+    accepted_consent = st.checkbox(
+        "Acepto el uso confidencial de mis datos y comprendo que esta "
+        "herramienta no reemplaza la consulta médica.",
+        key="informed_consent_checkbox",
+    )
+    if st.button(
+        "Comenzar",
+        type="primary",
+        use_container_width=True,
+        disabled=not accepted_consent,
+    ):
+        st.session_state["informed_consent_accepted"] = True
+        st.session_state["guided_step"] = "initial"
+        st.rerun()
+
+
 def render_initial_classification() -> None:
     """Capture the initial area of interest for the current session."""
     hide_sidebar()
@@ -132,35 +166,48 @@ def render_personal_data_step() -> None:
     st.title("Datos personales")
     st.success("Perfecto. Vamos a completar una breve evaluación.")
 
-    with st.form("guided_personal_data_form"):
-        guided_name = st.text_input("¿Cómo se llama?")
-        guided_age = st.number_input("Edad", min_value=0, max_value=120, value=18)
-        guided_sex = st.selectbox(
-            "Sexo",
-            [
-                "Femenino",
-                "Masculino",
-                "Intersexual",
-                "Otro",
-                "Prefiere no informar",
-            ],
-        )
-        guided_phone = st.text_input("Teléfono", max_chars=40)
-        submitted = st.form_submit_button(
-            "Siguiente",
-            type="primary",
-            use_container_width=True,
-        )
+    guided_name = st.text_input("Apellido y nombre completo *", max_chars=120)
+    guided_dni = st.text_input("DNI *", max_chars=30)
+    guided_phone = st.text_input(
+        "Teléfono celular / WhatsApp o contacto de familiar *",
+        max_chars=60,
+    )
+    guided_email = st.text_input("E-mail", max_chars=120)
+    guided_age = st.text_input("Edad *", max_chars=3)
+    guided_sex = st.selectbox(
+        "Sexo *",
+        [
+            "Femenino",
+            "Masculino",
+            "Intersexual",
+            "Otro",
+            "Prefiere no informar",
+        ],
+        index=None,
+        placeholder="Seleccione una opción",
+    )
+    missing_required_data = (
+        not guided_name.strip()
+        or not guided_dni.strip()
+        or not guided_phone.strip()
+        or not guided_age.strip().isdigit()
+        or int(guided_age.strip()) > 120
+        or not guided_sex
+    )
 
-    if submitted:
-        if not guided_name.strip():
-            st.error("Ingrese su nombre para continuar.")
-            return
+    if st.button(
+        "Siguiente",
+        type="primary",
+        use_container_width=True,
+        disabled=missing_required_data,
+    ):
         st.session_state["guided_personal_data"] = {
             "name": guided_name.strip(),
-            "age": int(guided_age),
+            "age": int(guided_age.strip()),
             "sex": guided_sex,
+            "dni": guided_dni.strip(),
             "phone": guided_phone.strip(),
+            "email": guided_email.strip(),
         }
         st.session_state["guided_step"] = "problem_details"
         st.rerun()
@@ -527,6 +574,8 @@ def render_adaptive_details_step() -> None:
 def clear_guided_flow() -> None:
     """Clear temporary guided intake data from the Streamlit session."""
     for key in (
+        "informed_consent_accepted",
+        "informed_consent_checkbox",
         "selected_initial_category",
         "initial_category_selection",
         "other_health_problem_description_input",
@@ -563,6 +612,18 @@ def render_thanks_step() -> None:
         f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
     )
     st.write(f"**Nombre:** {personal_data.get('name', 'Sin completar')}")
+    st.write(
+        f"**DNI:** "
+        f"{'registrado' if personal_data.get('dni') else 'no registrado'}"
+    )
+    st.write(
+        f"**Contacto:** "
+        f"{'registrado' if personal_data.get('phone') else 'no registrado'}"
+    )
+    st.write(
+        f"**E-mail:** "
+        f"{'registrado' if personal_data.get('email') else 'no registrado'}"
+    )
     st.write(
         f"**Problema o síntoma principal:** "
         f"{problem_details.get('problem', 'Sin completar')}"
@@ -1903,7 +1964,11 @@ def main() -> None:
         st.error(f"No se pudo inicializar la base de datos: {error}")
         st.stop()
 
-    guided_step = st.session_state.get("guided_step", "initial")
+    guided_step = st.session_state.get("guided_step", "consent")
+    if guided_step == "consent":
+        render_informed_consent_step()
+        return
+
     if guided_step == "initial":
         render_initial_classification()
         return
