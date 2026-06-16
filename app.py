@@ -371,6 +371,155 @@ def render_follow_up_orientation_step() -> None:
             "medication_related": medication_summary,
             "daily_limitation": daily_limitation,
         }
+        if st.session_state.get("selected_initial_category") == "Otro problema de salud":
+            st.session_state["guided_step"] = "thanks"
+        else:
+            st.session_state["guided_step"] = "adaptive_details"
+        st.rerun()
+
+
+def render_adaptive_details_step() -> None:
+    """Collect a few patient-friendly details for the selected main reason."""
+    hide_sidebar()
+    st.title("Un poco más de detalle")
+
+    selected_category = st.session_state.get("selected_initial_category", "")
+    adaptive_questions = {
+        "Dolor y movilidad": [
+            (
+                "problem_location",
+                "¿Dónde se localiza principalmente el problema?",
+                [
+                    "Cuello",
+                    "Hombro",
+                    "Codo",
+                    "Mano o muñeca",
+                    "Espalda alta",
+                    "Espalda baja",
+                    "Cadera",
+                    "Rodilla",
+                    "Tobillo o pie",
+                    "Varias zonas",
+                ],
+            ),
+            (
+                "pain_spread",
+                "¿El dolor se extiende hacia otra zona?",
+                ["No", "Sí"],
+            ),
+            (
+                "pain_description",
+                "¿Qué describe mejor el dolor?",
+                [
+                    "Punzante",
+                    "Ardor",
+                    "Rigidez",
+                    "Presión",
+                    "Hormigueo",
+                    "Otro",
+                ],
+            ),
+        ],
+        "Insomnio": [
+            (
+                "sleep_problem",
+                "¿Qué ocurre principalmente?",
+                [
+                    "Me cuesta dormirme",
+                    "Me despierto muchas veces",
+                    "Me despierto demasiado temprano",
+                    "Duermo pero no descanso",
+                ],
+            ),
+            (
+                "sleep_hours",
+                "¿Cuántas horas duerme aproximadamente?",
+                ["Menos de 4", "4 a 5", "6 a 7", "Más de 7"],
+            ),
+        ],
+        "Estrés o ansiedad": [
+            (
+                "main_stressor",
+                "¿Qué lo afecta más?",
+                ["Trabajo", "Familia", "Economía", "Salud", "No lo sé"],
+            ),
+            (
+                "physical_symptoms",
+                "¿Tiene síntomas físicos?",
+                [
+                    "Palpitaciones",
+                    "Tensión muscular",
+                    "Falta de aire",
+                    "Problemas digestivos",
+                    "Ninguno",
+                ],
+            ),
+        ],
+        "Tristeza o depresión": [
+            (
+                "mood_description",
+                "¿Qué describe mejor la situación?",
+                [
+                    "Tristeza persistente",
+                    "Falta de motivación",
+                    "Aislamiento",
+                    "Cansancio emocional",
+                    "Llanto frecuente",
+                ],
+            ),
+        ],
+        "Digestión": [
+            (
+                "digestive_symptom",
+                "¿Cuál es el síntoma principal?",
+                [
+                    "Distensión abdominal",
+                    "Acidez",
+                    "Reflujo",
+                    "Diarrea",
+                    "Constipación",
+                    "Dolor abdominal",
+                ],
+            ),
+        ],
+        "Respiración": [
+            (
+                "breathing_problem",
+                "¿Qué problema presenta?",
+                ["Tos", "Falta de aire", "Congestión nasal", "Rinitis", "Otro"],
+            ),
+        ],
+        "Salud urinaria, próstata o ginecológica": [
+            (
+                "urinary_or_intimate_reason",
+                "¿Cuál es el principal motivo?",
+                ["Urinario", "Prostático", "Ginecológico", "Sexual", "Otro"],
+            ),
+        ],
+    }
+    questions = adaptive_questions.get(selected_category, [])
+    if not questions:
+        st.session_state["guided_step"] = "thanks"
+        st.rerun()
+
+    answers = {}
+    with st.form("guided_adaptive_details_form"):
+        for key, question, options in questions:
+            answers[key] = {
+                "question": question,
+                "answer": st.radio(question, options, index=None),
+            }
+        submitted = st.form_submit_button(
+            "Continuar",
+            type="primary",
+            use_container_width=True,
+        )
+
+    if submitted:
+        if any(not item["answer"] for item in answers.values()):
+            st.error("Complete las opciones para continuar.")
+            return
+        st.session_state["guided_adaptive_details"] = answers
         st.session_state["guided_step"] = "thanks"
         st.rerun()
 
@@ -385,6 +534,7 @@ def clear_guided_flow() -> None:
         "guided_personal_data",
         "guided_problem_details",
         "guided_follow_up_orientation",
+        "guided_adaptive_details",
         "guided_step",
     ):
         st.session_state.pop(key, None)
@@ -406,6 +556,7 @@ def render_thanks_step() -> None:
         "guided_follow_up_orientation",
         {},
     )
+    adaptive_details = st.session_state.get("guided_adaptive_details", {})
     st.markdown("### Resumen")
     st.write(
         f"**Motivo principal:** "
@@ -438,6 +589,8 @@ def render_thanks_step() -> None:
         f"**Limitación diaria:** "
         f"{follow_up_orientation.get('daily_limitation', 'Sin completar')}"
     )
+    for item in adaptive_details.values():
+        st.write(f"**{item['question']}** {item['answer']}")
 
     if st.button(
         "Enviar otra respuesta",
@@ -1765,6 +1918,10 @@ def main() -> None:
 
     if guided_step == "follow_up_orientation":
         render_follow_up_orientation_step()
+        return
+
+    if guided_step == "adaptive_details":
+        render_adaptive_details_step()
         return
 
     if guided_step == "thanks":
