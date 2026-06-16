@@ -92,9 +92,24 @@ def render_welcome_step() -> None:
         st.rerun()
 
 
+def render_back_button(previous_step: str) -> None:
+    """Allow patients to return to the previous guided step without clearing data."""
+    if st.button("Volver atrás", use_container_width=True):
+        st.session_state["guided_step"] = previous_step
+        st.rerun()
+
+
+def option_index(options: list[str], selected: str | None) -> int | None:
+    """Return the index for a previously selected option."""
+    if selected in options:
+        return options.index(selected)
+    return None
+
+
 def render_informed_consent_step() -> None:
     """Show the informed consent before starting the guided intake."""
     hide_sidebar()
+    render_back_button("welcome")
     st.title("Consentimiento informado")
     st.write(
         "Esta aplicación permite registrar información previa o complementaria "
@@ -129,6 +144,7 @@ def render_informed_consent_step() -> None:
 def render_initial_classification() -> None:
     """Capture the initial area of interest for the current session."""
     hide_sidebar()
+    render_back_button("consent")
     st.title("¿Qué desea mejorar?")
 
     selected_category = st.radio(
@@ -178,27 +194,47 @@ def render_initial_classification() -> None:
 def render_personal_data_step() -> None:
     """Collect simple personal data for the guided experience."""
     hide_sidebar()
+    render_back_button("initial")
     st.title("Datos personales")
     st.success("Perfecto. Vamos a completar una breve evaluación.")
 
-    guided_name = st.text_input("Apellido y nombre completo *", max_chars=120)
-    guided_dni = st.text_input("DNI *", max_chars=30)
+    saved_personal_data = st.session_state.get("guided_personal_data", {})
+    guided_name = st.text_input(
+        "Apellido y nombre completo *",
+        value=saved_personal_data.get("name", ""),
+        max_chars=120,
+    )
+    guided_dni = st.text_input(
+        "DNI *",
+        value=saved_personal_data.get("dni", ""),
+        max_chars=30,
+    )
     guided_phone = st.text_input(
         "Teléfono celular / WhatsApp o contacto de familiar *",
+        value=saved_personal_data.get("phone", ""),
         max_chars=60,
     )
-    guided_email = st.text_input("E-mail", max_chars=120)
-    guided_age = st.text_input("Edad *", max_chars=3)
+    guided_email = st.text_input(
+        "E-mail",
+        value=saved_personal_data.get("email", ""),
+        max_chars=120,
+    )
+    guided_age = st.text_input(
+        "Edad *",
+        value=str(saved_personal_data.get("age", "")),
+        max_chars=3,
+    )
+    sex_options = [
+        "Femenino",
+        "Masculino",
+        "Intersexual",
+        "Otro",
+        "Prefiere no informar",
+    ]
     guided_sex = st.selectbox(
         "Sexo *",
-        [
-            "Femenino",
-            "Masculino",
-            "Intersexual",
-            "Otro",
-            "Prefiere no informar",
-        ],
-        index=None,
+        sex_options,
+        index=option_index(sex_options, saved_personal_data.get("sex")),
         placeholder="Seleccione una opción",
     )
     missing_required_data = (
@@ -231,6 +267,7 @@ def render_personal_data_step() -> None:
 def render_problem_details_step() -> None:
     """Collect the main problem in patient-friendly language."""
     hide_sidebar()
+    render_back_button("personal_data")
     st.title("Cuéntenos su problema")
 
     selected_category = st.session_state.get("selected_initial_category", "")
@@ -240,6 +277,7 @@ def render_problem_details_step() -> None:
         "Más de 3 meses",
         "Más de 1 año",
     ]
+    saved_problem_details = st.session_state.get("guided_problem_details", {})
     category_fields = {
         "Insomnio": {
             "label": "¿Qué problema tiene con el sueño?",
@@ -324,6 +362,7 @@ def render_problem_details_step() -> None:
         elif selected_category == "Dolor y movilidad":
             problem = st.text_input(
                 "¿Cuál es el problema que desea tratar?",
+                value=saved_problem_details.get("problem", ""),
                 placeholder=(
                     "Ejemplo: dolor lumbar, dolor de rodilla, dolor cervical."
                 ),
@@ -335,7 +374,10 @@ def render_problem_details_step() -> None:
             problem = st.selectbox(
                 field_config.get("label", "¿Cuál es el problema principal?"),
                 field_config.get("options", ["Otro"]),
-                index=None,
+                index=option_index(
+                    field_config.get("options", ["Otro"]),
+                    saved_problem_details.get("problem"),
+                ),
                 placeholder="Seleccione una opción",
             )
             slider_label = field_config.get(
@@ -351,14 +393,14 @@ def render_problem_details_step() -> None:
         duration = st.selectbox(
             "¿Hace cuánto tiempo lo tiene?",
             duration_options,
-            index=None,
+            index=option_index(duration_options, saved_problem_details.get("duration")),
             placeholder="Seleccione una opción",
         )
         intensity = st.slider(
             slider_label,
             min_value=0,
             max_value=10,
-            value=0,
+            value=int(saved_problem_details.get("intensity", 0)),
             help=caption,
         )
         st.caption(caption)
@@ -385,29 +427,57 @@ def render_problem_details_step() -> None:
 def render_follow_up_orientation_step() -> None:
     """Collect simple context to orient the patient follow-up."""
     hide_sidebar()
+    render_back_button("problem_details")
     st.title("Para orientar mejor el seguimiento")
+    saved_follow_up = st.session_state.get("guided_follow_up_orientation", {})
 
     with st.form("guided_follow_up_orientation_form"):
         worsens_with = st.text_input(
             "¿Qué empeora su problema?",
+            value=saved_follow_up.get("worsens_with", "").replace(
+                "Sin completar",
+                "",
+            ),
             placeholder="Ejemplo: caminar, estrés, comida, frío, noche, esfuerzo.",
         )
         improves_with = st.text_input(
             "¿Qué mejora su problema?",
+            value=saved_follow_up.get("improves_with", "").replace(
+                "Sin completar",
+                "",
+            ),
             placeholder="Ejemplo: reposo, calor, medicación, masajes, dormir.",
+        )
+        medication_options = ["No", "Sí", "No estoy seguro/a"]
+        saved_medication = saved_follow_up.get("medication_related")
+        saved_medication_option = (
+            saved_medication
+            if saved_medication in medication_options
+            else "Sí" if saved_medication else None
         )
         medication_related = st.radio(
             "¿Toma actualmente algún medicamento relacionado con este problema?",
-            ["No", "Sí", "No estoy seguro/a"],
-            index=None,
+            medication_options,
+            index=option_index(medication_options, saved_medication_option),
         )
         medication_name = ""
         if medication_related == "Sí":
-            medication_name = st.text_input("¿Cuál?")
+            medication_name = st.text_input(
+                "¿Cuál?",
+                value=(
+                    saved_medication
+                    if saved_medication not in medication_options
+                    else ""
+                ),
+            )
+        limitation_options = ["No", "Un poco", "Bastante", "Mucho"]
         daily_limitation = st.radio(
             "¿Este problema limita sus actividades diarias?",
-            ["No", "Un poco", "Bastante", "Mucho"],
-            index=None,
+            limitation_options,
+            index=option_index(
+                limitation_options,
+                saved_follow_up.get("daily_limitation"),
+            ),
         )
         submitted = st.form_submit_button(
             "Finalizar",
@@ -443,6 +513,7 @@ def render_follow_up_orientation_step() -> None:
 def render_adaptive_details_step() -> None:
     """Collect a few patient-friendly details for the selected main reason."""
     hide_sidebar()
+    render_back_button("follow_up_orientation")
     st.title("Un poco más de detalle")
 
     selected_category = st.session_state.get("selected_initial_category", "")
@@ -462,6 +533,7 @@ def render_adaptive_details_step() -> None:
                     "Rodilla",
                     "Tobillo o pie",
                     "Varias zonas",
+                    "Otro",
                 ],
             ),
             (
@@ -565,26 +637,76 @@ def render_adaptive_details_step() -> None:
         st.session_state["guided_step"] = "treatment_expectations"
         st.rerun()
 
+    saved_adaptive_details = st.session_state.get("guided_adaptive_details", {})
     answers = {}
     with st.form("guided_adaptive_details_form"):
         for key, question, options in questions:
-            answer = st.radio(question, options, index=None)
+            saved_item = saved_adaptive_details.get(key, {})
+            saved_answer = saved_item.get("answer")
+            saved_detail_text = (
+                saved_answer
+                if isinstance(saved_answer, str) and saved_answer not in options
+                else ""
+            )
+            display_answer = saved_answer
+            if key in (
+                "problem_location",
+                "pain_description",
+                "main_stressor",
+                "physical_symptoms",
+            ) and saved_answer not in (None, *options):
+                display_answer = "Otro"
+            if key == "pain_spread" and saved_answer not in (None, *options):
+                display_answer = "Sí"
+            answer = st.radio(
+                question,
+                options,
+                index=option_index(options, display_answer),
+            )
             other_answer = ""
+            requires_detail = False
+            if key == "problem_location" and answer == "Otro":
+                requires_detail = True
+                other_answer = st.text_area(
+                    "Describa brevemente en qué zona o parte del cuerpo se "
+                    "localiza",
+                    value=saved_detail_text,
+                    max_chars=500,
+                )
+            if key == "pain_spread" and answer == "Sí":
+                requires_detail = True
+                other_answer = st.text_area(
+                    "Describa hacia dónde se extiende",
+                    value=saved_detail_text,
+                    max_chars=500,
+                )
+            if key == "pain_description" and answer == "Otro":
+                requires_detail = True
+                other_answer = st.text_area(
+                    "Describa brevemente cómo siente el dolor",
+                    value=saved_detail_text,
+                    max_chars=500,
+                )
             if key == "main_stressor" and answer == "Otro":
+                requires_detail = True
                 other_answer = st.text_area(
                     "Por favor describa brevemente qué situación considera "
                     "que más influye en su problema actual",
+                    value=saved_detail_text,
                     max_chars=500,
                 )
             if key == "physical_symptoms" and answer == "Otro":
+                requires_detail = True
                 other_answer = st.text_area(
                     "Describa brevemente los síntomas físicos más importantes",
+                    value=saved_detail_text,
                     max_chars=500,
                 )
             answers[key] = {
                 "question": question,
                 "answer": answer,
                 "other_answer": other_answer,
+                "requires_detail": requires_detail,
             }
         submitted = st.form_submit_button(
             "Continuar",
@@ -597,15 +719,16 @@ def render_adaptive_details_step() -> None:
             st.error("Complete las opciones para continuar.")
             return
         if any(
-            item["answer"] == "Otro" and not item["other_answer"].strip()
+            item["requires_detail"] and not item["other_answer"].strip()
             for item in answers.values()
         ):
             st.error("Complete el detalle solicitado para continuar.")
             return
         for item in answers.values():
-            if item["answer"] == "Otro":
+            if item["requires_detail"]:
                 item["answer"] = item["other_answer"].strip()
             item.pop("other_answer", None)
+            item.pop("requires_detail", None)
         st.session_state["guided_adaptive_details"] = answers
         st.session_state["guided_step"] = "treatment_expectations"
         st.rerun()
@@ -614,6 +737,10 @@ def render_adaptive_details_step() -> None:
 def render_treatment_expectations_step() -> None:
     """Collect the patient's expectations for acupuncture treatment."""
     hide_sidebar()
+    if st.session_state.get("selected_initial_category") == "Otro problema de salud":
+        render_back_button("follow_up_orientation")
+    else:
+        render_back_button("adaptive_details")
     st.title("¿Qué espera lograr con el tratamiento de Acupuntura?")
     st.write(
         "No existe una respuesta correcta o incorrecta. Queremos conocer cuál "
@@ -637,6 +764,19 @@ def render_treatment_expectations_step() -> None:
         "Mejorar una función específica de mi organismo",
         "Otro objetivo",
     ]
+    saved_treatment_expectations = st.session_state.get(
+        "guided_treatment_expectations",
+        {},
+    )
+    saved_expectations = saved_treatment_expectations.get("expectations", [])
+    saved_other_expectation = next(
+        (
+            expectation
+            for expectation in saved_expectations
+            if expectation not in expectation_options
+        ),
+        "",
+    )
 
     st.write("Seleccione todas las opciones que correspondan")
     selected_expectations = []
@@ -667,11 +807,13 @@ def render_treatment_expectations_step() -> None:
     if "Otro objetivo" in selected_expectations:
         other_expectation = st.text_area(
             "Describa brevemente cuál sería el resultado ideal para usted",
+            value=saved_other_expectation,
             max_chars=500,
         )
     daily_life_result = st.text_area(
         "Si el tratamiento fuera exitoso, dentro de 3 a 6 meses, ¿qué sería "
         "diferente en su vida cotidiana?",
+        value=saved_treatment_expectations.get("daily_life_result", ""),
         max_chars=800,
     )
     missing_expectations = (
@@ -784,14 +926,6 @@ def render_thanks_step() -> None:
     """Render the patient-friendly completion screen."""
     hide_sidebar()
     store_completed_guided_evaluation()
-    st.title("Evaluación completada con éxito")
-    st.write(
-        "Gracias por dedicar unos minutos a responder.\n\n"
-        "La información será revisada por el Dr. Mauricio Uehara y contribuirá "
-        "a orientar su estrategia terapéutica.\n\n"
-        "Lo esperamos en su consulta para comenzar el tratamiento.\n\n"
-        "Hasta pronto."
-    )
 
     personal_data = st.session_state.get("guided_personal_data", {})
     problem_details = st.session_state.get("guided_problem_details", {})
@@ -804,7 +938,7 @@ def render_thanks_step() -> None:
         "guided_treatment_expectations",
         {},
     )
-    st.markdown("### Resumen")
+    st.title("RESUMEN")
     st.write(
         f"**Motivo principal:** "
         f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
@@ -861,6 +995,25 @@ def render_thanks_step() -> None:
         f"**Expectativa expresada libremente:** "
         f"{treatment_expectations.get('daily_life_result', 'Sin completar')}"
     )
+    st.markdown("## EVALUACIÓN COMPLETADA CON ÉXITO")
+    st.write(
+        "Gracias por dedicar unos minutos a responder.\n\n"
+        "La información será revisada por el Dr. Mauricio Uehara y contribuirá "
+        "a orientar su estrategia terapéutica.\n\n"
+        "Lo esperamos en su consulta para comenzar el tratamiento.\n\n"
+        "Hasta pronto."
+    )
+    if st.button("Volver atrás", use_container_width=True):
+        if st.session_state.get("guided_evaluation_recorded"):
+            completed_evaluations = st.session_state.get(
+                "completed_guided_evaluations",
+                [],
+            )
+            if completed_evaluations:
+                completed_evaluations.pop()
+            st.session_state.pop("guided_evaluation_recorded", None)
+        st.session_state["guided_step"] = "treatment_expectations"
+        st.rerun()
 
 
 def patient_options(patients: pd.DataFrame) -> dict[str, int]:
