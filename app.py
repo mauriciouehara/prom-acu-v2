@@ -419,7 +419,7 @@ def render_follow_up_orientation_step() -> None:
             "daily_limitation": daily_limitation,
         }
         if st.session_state.get("selected_initial_category") == "Otro problema de salud":
-            st.session_state["guided_step"] = "thanks"
+            st.session_state["guided_step"] = "treatment_expectations"
         else:
             st.session_state["guided_step"] = "adaptive_details"
         st.rerun()
@@ -546,7 +546,7 @@ def render_adaptive_details_step() -> None:
     }
     questions = adaptive_questions.get(selected_category, [])
     if not questions:
-        st.session_state["guided_step"] = "thanks"
+        st.session_state["guided_step"] = "treatment_expectations"
         st.rerun()
 
     answers = {}
@@ -567,6 +567,79 @@ def render_adaptive_details_step() -> None:
             st.error("Complete las opciones para continuar.")
             return
         st.session_state["guided_adaptive_details"] = answers
+        st.session_state["guided_step"] = "treatment_expectations"
+        st.rerun()
+
+
+def render_treatment_expectations_step() -> None:
+    """Collect the patient's expectations for acupuncture treatment."""
+    hide_sidebar()
+    st.title("¿Qué espera lograr con el tratamiento de Acupuntura?")
+    st.write(
+        "No existe una respuesta correcta o incorrecta. Queremos conocer cuál "
+        "es el resultado más importante para usted."
+    )
+
+    expectation_options = [
+        "Reducir el dolor",
+        "Eliminar completamente el dolor",
+        "Dormir mejor",
+        "Reducir el estrés o la ansiedad",
+        "Mejorar el estado de ánimo",
+        "Mejorar mi movilidad",
+        "Mejorar mi calidad de vida",
+        "Tener más energía",
+        "Reducir medicamentos",
+        "Suspender medicamentos, si fuera posible",
+        "Evitar una cirugía",
+        "Recuperar una actividad que hoy no puedo realizar",
+        "Mejorar mi rendimiento físico o deportivo",
+        "Mejorar una función específica de mi organismo",
+        "Otro objetivo",
+    ]
+
+    selected_expectations = st.multiselect(
+        "Seleccione todas las opciones que correspondan",
+        expectation_options,
+    )
+    other_expectation = ""
+    if "Otro objetivo" in selected_expectations:
+        other_expectation = st.text_area(
+            "Describa brevemente cuál sería el resultado ideal para usted",
+            max_chars=500,
+        )
+    daily_life_result = st.text_area(
+        "Si el tratamiento fuera exitoso, dentro de 3 a 6 meses, ¿qué sería "
+        "diferente en su vida cotidiana?",
+        max_chars=800,
+    )
+    missing_expectations = (
+        not selected_expectations
+        or (
+            "Otro objetivo" in selected_expectations
+            and not other_expectation.strip()
+        )
+        or not daily_life_result.strip()
+    )
+
+    if st.button(
+        "Continuar",
+        type="primary",
+        use_container_width=True,
+        disabled=missing_expectations,
+    ):
+        expectation_summary = [
+            expectation
+            for expectation in selected_expectations
+            if expectation != "Otro objetivo"
+        ]
+        if "Otro objetivo" in selected_expectations:
+            expectation_summary.append(other_expectation.strip())
+
+        st.session_state["guided_treatment_expectations"] = {
+            "expectations": expectation_summary,
+            "daily_life_result": daily_life_result.strip(),
+        }
         st.session_state["guided_step"] = "thanks"
         st.rerun()
 
@@ -584,6 +657,7 @@ def clear_guided_flow() -> None:
         "guided_problem_details",
         "guided_follow_up_orientation",
         "guided_adaptive_details",
+        "guided_treatment_expectations",
         "guided_step",
     ):
         st.session_state.pop(key, None)
@@ -606,6 +680,10 @@ def render_thanks_step() -> None:
         {},
     )
     adaptive_details = st.session_state.get("guided_adaptive_details", {})
+    treatment_expectations = st.session_state.get(
+        "guided_treatment_expectations",
+        {},
+    )
     st.markdown("### Resumen")
     st.write(
         f"**Motivo principal:** "
@@ -652,6 +730,17 @@ def render_thanks_step() -> None:
     )
     for item in adaptive_details.values():
         st.write(f"**{item['question']}** {item['answer']}")
+    expectations = treatment_expectations.get("expectations", [])
+    expectations_text = (
+        ", ".join(expectations)
+        if expectations
+        else "Sin completar"
+    )
+    st.write(f"**Expectativas del tratamiento:** {expectations_text}")
+    st.write(
+        f"**Resultado esperado en la vida cotidiana:** "
+        f"{treatment_expectations.get('daily_life_result', 'Sin completar')}"
+    )
 
     if st.button(
         "Enviar otra respuesta",
@@ -1987,6 +2076,10 @@ def main() -> None:
 
     if guided_step == "adaptive_details":
         render_adaptive_details_step()
+        return
+
+    if guided_step == "treatment_expectations":
+        render_treatment_expectations_step()
         return
 
     if guided_step == "thanks":
