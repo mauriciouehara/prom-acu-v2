@@ -92,18 +92,36 @@ def render_initial_classification() -> None:
             "Respiración",
             "Digestión",
             "Salud urinaria, próstata o ginecológica",
+            "Otro problema de salud",
         ],
         index=None,
         key="initial_category_selection",
         label_visibility="collapsed",
     )
+    other_health_problem_description = ""
+    if selected_category == "Otro problema de salud":
+        other_health_problem_description = st.text_area(
+            "Por favor describa brevemente el motivo de consulta",
+            max_chars=500,
+            key="other_health_problem_description",
+        )
     if st.button(
         "Continuar",
         type="primary",
         use_container_width=True,
-        disabled=selected_category is None,
+        disabled=(
+            selected_category is None
+            or (
+                selected_category == "Otro problema de salud"
+                and not other_health_problem_description.strip()
+            )
+        ),
     ):
         st.session_state["selected_initial_category"] = selected_category
+        if selected_category == "Otro problema de salud":
+            st.session_state["other_health_problem_description"] = (
+                other_health_problem_description.strip()
+            )
         st.session_state["guided_step"] = "personal_data"
         st.rerun()
 
@@ -201,6 +219,7 @@ def clear_guided_flow() -> None:
     for key in (
         "selected_initial_category",
         "initial_category_selection",
+        "other_health_problem_description",
         "guided_personal_data",
         "guided_problem_details",
         "guided_step",
