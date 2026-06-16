@@ -103,7 +103,7 @@ def render_initial_classification() -> None:
         other_health_problem_description = st.text_area(
             "Por favor describa brevemente el motivo de consulta",
             max_chars=500,
-            key="other_health_problem_description",
+            key="other_health_problem_description_input",
         )
     if st.button(
         "Continuar",
@@ -325,6 +325,7 @@ def clear_guided_flow() -> None:
     for key in (
         "selected_initial_category",
         "initial_category_selection",
+        "other_health_problem_description_input",
         "other_health_problem_description",
         "guided_personal_data",
         "guided_problem_details",
