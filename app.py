@@ -503,7 +503,7 @@ def render_adaptive_details_step() -> None:
             (
                 "main_stressor",
                 "¿Qué lo afecta más?",
-                ["Trabajo", "Familia", "Economía", "Salud", "No lo sé"],
+                ["Trabajo", "Familia", "Economía", "Salud", "Otro"],
             ),
             (
                 "physical_symptoms",
@@ -514,6 +514,7 @@ def render_adaptive_details_step() -> None:
                     "Falta de aire",
                     "Problemas digestivos",
                     "Ninguno",
+                    "Otro",
                 ],
             ),
         ],
@@ -567,9 +568,23 @@ def render_adaptive_details_step() -> None:
     answers = {}
     with st.form("guided_adaptive_details_form"):
         for key, question, options in questions:
+            answer = st.radio(question, options, index=None)
+            other_answer = ""
+            if key == "main_stressor" and answer == "Otro":
+                other_answer = st.text_area(
+                    "Por favor describa brevemente qué situación considera "
+                    "que más influye en su problema actual",
+                    max_chars=500,
+                )
+            if key == "physical_symptoms" and answer == "Otro":
+                other_answer = st.text_area(
+                    "Describa brevemente los síntomas físicos más importantes",
+                    max_chars=500,
+                )
             answers[key] = {
                 "question": question,
-                "answer": st.radio(question, options, index=None),
+                "answer": answer,
+                "other_answer": other_answer,
             }
         submitted = st.form_submit_button(
             "Continuar",
@@ -581,6 +596,16 @@ def render_adaptive_details_step() -> None:
         if any(not item["answer"] for item in answers.values()):
             st.error("Complete las opciones para continuar.")
             return
+        if any(
+            item["answer"] == "Otro" and not item["other_answer"].strip()
+            for item in answers.values()
+        ):
+            st.error("Complete el detalle solicitado para continuar.")
+            return
+        for item in answers.values():
+            if item["answer"] == "Otro":
+                item["answer"] = item["other_answer"].strip()
+            item.pop("other_answer", None)
         st.session_state["guided_adaptive_details"] = answers
         st.session_state["guided_step"] = "treatment_expectations"
         st.rerun()
@@ -704,11 +729,13 @@ def clear_guided_flow() -> None:
 def render_thanks_step() -> None:
     """Render the patient-friendly completion screen."""
     hide_sidebar()
-    st.title("Gracias")
-    st.success("Su información fue registrada correctamente.")
+    st.title("Evaluación completada con éxito")
     st.write(
-        "El Dr. Mauricio Uehara podrá revisar estos datos para orientar mejor "
-        "el seguimiento."
+        "Gracias por dedicar unos minutos a responder.\n\n"
+        "La información será revisada por el Dr. Mauricio Uehara y contribuirá "
+        "a orientar su estrategia terapéutica.\n\n"
+        "Lo esperamos en su consulta para comenzar el tratamiento.\n\n"
+        "Hasta pronto."
     )
 
     personal_data = st.session_state.get("guided_personal_data", {})
@@ -779,14 +806,6 @@ def render_thanks_step() -> None:
         f"**Expectativa expresada libremente:** "
         f"{treatment_expectations.get('daily_life_result', 'Sin completar')}"
     )
-
-    if st.button(
-        "Enviar otra respuesta",
-        type="primary",
-        use_container_width=True,
-    ):
-        clear_guided_flow()
-        st.rerun()
 
 
 def patient_options(patients: pd.DataFrame) -> dict[str, int]:
