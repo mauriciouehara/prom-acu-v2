@@ -77,6 +77,21 @@ def hide_sidebar() -> None:
     )
 
 
+def render_welcome_step() -> None:
+    """Show a friendly welcome before the guided intake starts."""
+    hide_sidebar()
+    st.title("¡Bienvenida/o!")
+    st.subheader("ACUPUNTURA NEUROBIOENERGÉTICA")
+    st.write("Dr. Mauricio Uehara")
+    st.write(
+        "Vamos a realizar una evaluación simple para conocer mejor su motivo "
+        "de consulta y orientar el seguimiento."
+    )
+    if st.button("Comenzar", type="primary", use_container_width=True):
+        st.session_state["guided_step"] = "consent"
+        st.rerun()
+
+
 def render_informed_consent_step() -> None:
     """Show the informed consent before starting the guided intake."""
     hide_sidebar()
@@ -598,10 +613,31 @@ def render_treatment_expectations_step() -> None:
         "Otro objetivo",
     ]
 
-    selected_expectations = st.multiselect(
-        "Seleccione todas las opciones que correspondan",
-        expectation_options,
+    st.write("Seleccione todas las opciones que correspondan")
+    selected_expectations = []
+    selected_count = sum(
+        1
+        for index in range(len(expectation_options))
+        if st.session_state.get(f"treatment_expectation_option_{index}")
     )
+    for index, expectation in enumerate(expectation_options):
+        option_key = f"treatment_expectation_option_{index}"
+        checked = st.checkbox(
+            expectation,
+            key=option_key,
+            disabled=(
+                selected_count >= 2
+                and not st.session_state.get(option_key, False)
+            ),
+        )
+        if checked:
+            selected_expectations.append(expectation)
+    if selected_count >= 2:
+        st.info(
+            "Para enfocar mejor el seguimiento, registre sus objetivos "
+            "principales. Si desea agregar algo más, puede escribirlo en el "
+            "espacio libre."
+        )
     other_expectation = ""
     if "Otro objetivo" in selected_expectations:
         other_expectation = st.text_area(
@@ -661,6 +697,8 @@ def clear_guided_flow() -> None:
         "guided_step",
     ):
         st.session_state.pop(key, None)
+    for index in range(15):
+        st.session_state.pop(f"treatment_expectation_option_{index}", None)
 
 
 def render_thanks_step() -> None:
@@ -736,9 +774,9 @@ def render_thanks_step() -> None:
         if expectations
         else "Sin completar"
     )
-    st.write(f"**Expectativas del tratamiento:** {expectations_text}")
+    st.write(f"**Objetivos principales seleccionados:** {expectations_text}")
     st.write(
-        f"**Resultado esperado en la vida cotidiana:** "
+        f"**Expectativa expresada libremente:** "
         f"{treatment_expectations.get('daily_life_result', 'Sin completar')}"
     )
 
@@ -2053,7 +2091,11 @@ def main() -> None:
         st.error(f"No se pudo inicializar la base de datos: {error}")
         st.stop()
 
-    guided_step = st.session_state.get("guided_step", "consent")
+    guided_step = st.session_state.get("guided_step", "welcome")
+    if guided_step == "welcome":
+        render_welcome_step()
+        return
+
     if guided_step == "consent":
         render_informed_consent_step()
         return
