@@ -984,9 +984,8 @@ def store_completed_guided_evaluation() -> None:
 
 
 def render_thanks_step() -> None:
-    """Render the patient-friendly completion screen."""
+    """Render the patient-friendly summary before the final closure."""
     hide_sidebar()
-    store_completed_guided_evaluation()
 
     personal_data = st.session_state.get("guided_personal_data", {})
     problem_details = st.session_state.get("guided_problem_details", {})
@@ -1000,6 +999,10 @@ def render_thanks_step() -> None:
         {},
     )
     st.title("RESUMEN")
+    st.write(
+        "Revise la información cargada. Si necesita corregir algo, presione "
+        "Atrás."
+    )
     st.write(
         f"**Motivo principal:** "
         f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
@@ -1056,26 +1059,17 @@ def render_thanks_step() -> None:
         f"**Expectativa expresada libremente:** "
         f"{treatment_expectations.get('daily_life_result', 'Sin completar')}"
     )
-    st.markdown("## EVALUACIÓN COMPLETADA CON ÉXITO")
-    st.write(
-        "Gracias por dedicar unos minutos a responder.\n\n"
-        "La información será revisada por el Dr. Mauricio Uehara y contribuirá "
-        "a orientar su estrategia terapéutica.\n\n"
-        "Lo esperamos en su consulta para comenzar el tratamiento.\n\n"
-        "Hasta pronto."
-    )
-    if st.button("Volver atrás", use_container_width=True):
-        if st.session_state.get("guided_evaluation_recorded"):
-            completed_evaluations = st.session_state.get(
-                "completed_guided_evaluations",
-                [],
-            )
-            if completed_evaluations:
-                completed_evaluations.pop()
-            st.session_state.pop("guided_evaluation_recorded", None)
-        st.session_state["guided_step"] = "treatment_expectations"
-        st.rerun()
 
+    def finish_guided_flow() -> bool:
+        store_completed_guided_evaluation()
+        st.session_state["guided_step"] = "final_closure"
+        return True
+
+    render_patient_navigation(
+        "treatment_expectations",
+        next_label="Finalizar",
+        on_next=finish_guided_flow,
+    )
 
 def render_problem_details_step() -> None:
     """Collect the main problem in patient-friendly language."""
@@ -1676,7 +1670,7 @@ def render_treatment_expectations_step() -> None:
 def render_final_closure_step() -> None:
     """Render the final professional closure after the guided flow is finished."""
     hide_sidebar()
-    st.markdown("## EVALUACIÓN COMPLETADA CON ÉXITO")
+    st.title("EVALUACIÓN COMPLETADA CON ÉXITO")
     st.write(
         "Gracias por dedicar unos minutos a responder.\n\n"
         "La información será revisada por el Dr. Mauricio Uehara y contribuirá "
@@ -1687,9 +1681,8 @@ def render_final_closure_step() -> None:
 
 
 def render_thanks_step() -> None:
-    """Render the patient-friendly completion screen."""
+    """Render the patient-friendly summary before the final closure."""
     hide_sidebar()
-    store_completed_guided_evaluation()
 
     personal_data = st.session_state.get("guided_personal_data", {})
     problem_details = st.session_state.get("guided_problem_details", {})
@@ -1703,6 +1696,10 @@ def render_thanks_step() -> None:
         {},
     )
     st.title("RESUMEN")
+    st.write(
+        "Revise la información cargada. Si necesita corregir algo, presione "
+        "Atrás."
+    )
     st.write(
         f"**Motivo principal:** "
         f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
@@ -1759,29 +1756,17 @@ def render_thanks_step() -> None:
         f"**Expectativa expresada libremente:** "
         f"{treatment_expectations.get('daily_life_result', 'Sin completar')}"
     )
-    render_final_closure_step()
 
     def finish_guided_flow() -> bool:
+        store_completed_guided_evaluation()
         st.session_state["guided_step"] = "final_closure"
         return True
-
-    def reopen_final_step() -> None:
-        if st.session_state.get("guided_evaluation_recorded"):
-            completed_evaluations = st.session_state.get(
-                "completed_guided_evaluations",
-                [],
-            )
-            if completed_evaluations:
-                completed_evaluations.pop()
-            st.session_state.pop("guided_evaluation_recorded", None)
 
     render_patient_navigation(
         "treatment_expectations",
         next_label="Finalizar",
-        on_back=reopen_final_step,
         on_next=finish_guided_flow,
     )
-
 
 def patient_options(patients: pd.DataFrame) -> dict[str, int]:
     """Build pseudonymized patient labels mapped to database identifiers."""
