@@ -106,10 +106,42 @@ def option_index(options: list[str], selected: str | None) -> int | None:
     return None
 
 
+def render_patient_navigation(
+    previous_step: str,
+    next_label: str = "Siguiente",
+    *,
+    on_back=None,
+    on_next=None,
+    next_step: str | None = None,
+) -> None:
+    """Render bottom navigation for patient guided-flow screens."""
+    back_col, next_col = st.columns(2)
+    with back_col:
+        if st.button("Atrás", use_container_width=True):
+            if on_back is not None:
+                on_back()
+            st.session_state["guided_step"] = previous_step
+            st.rerun()
+    with next_col:
+        if st.button(next_label, type="primary", use_container_width=True):
+            if on_next is not None and not on_next():
+                return
+            if next_step is not None:
+                st.session_state["guided_step"] = next_step
+            st.rerun()
+
+
+def show_dictation_help() -> None:
+    """Show a short mobile dictation hint below long text fields."""
+    st.caption(
+        "También puede usar el micrófono del teclado de su celular para "
+        "dictar la respuesta."
+    )
+
+
 def render_informed_consent_step() -> None:
     """Show the informed consent before starting the guided intake."""
     hide_sidebar()
-    render_back_button("welcome")
     st.title("Consentimiento informado")
     st.write(
         "Esta aplicación permite registrar información previa o complementaria "
@@ -130,21 +162,23 @@ def render_informed_consent_step() -> None:
         "herramienta no reemplaza la consulta médica.",
         key="informed_consent_checkbox",
     )
-    if st.button(
-        "Comenzar",
-        type="primary",
-        use_container_width=True,
-        disabled=not accepted_consent,
-    ):
+    def continue_from_consent() -> bool:
+        if not accepted_consent:
+            st.error("Debe aceptar el consentimiento informado para continuar.")
+            return False
         st.session_state["informed_consent_accepted"] = True
-        st.session_state["guided_step"] = "initial"
-        st.rerun()
+        return True
+
+    render_patient_navigation(
+        "welcome",
+        on_next=continue_from_consent,
+        next_step="initial",
+    )
 
 
 def render_initial_classification() -> None:
     """Capture the initial area of interest for the current session."""
     hide_sidebar()
-    render_back_button("consent")
     st.title("¿Qué desea mejorar?")
 
     selected_category = st.radio(
@@ -170,31 +204,35 @@ def render_initial_classification() -> None:
             max_chars=500,
             key="other_health_problem_description_input",
         )
-    if st.button(
-        "Continuar",
-        type="primary",
-        use_container_width=True,
-        disabled=(
-            selected_category is None
-            or (
-                selected_category == "Otro problema de salud"
-                and not other_health_problem_description.strip()
-            )
-        ),
-    ):
+        show_dictation_help()
+
+    def continue_from_initial() -> bool:
+        if selected_category is None:
+            st.error("Seleccione una opción para continuar.")
+            return False
+        if (
+            selected_category == "Otro problema de salud"
+            and not other_health_problem_description.strip()
+        ):
+            st.error("Por favor complete este campo para continuar.")
+            return False
         st.session_state["selected_initial_category"] = selected_category
         if selected_category == "Otro problema de salud":
             st.session_state["other_health_problem_description"] = (
                 other_health_problem_description.strip()
             )
-        st.session_state["guided_step"] = "personal_data"
-        st.rerun()
+        return True
+
+    render_patient_navigation(
+        "consent",
+        on_next=continue_from_initial,
+        next_step="personal_data",
+    )
 
 
 def render_personal_data_step() -> None:
     """Collect simple personal data for the guided experience."""
     hide_sidebar()
-    render_back_button("initial")
     st.title("Datos personales")
     st.success("Perfecto. Vamos a completar una breve evaluación.")
 
@@ -231,43 +269,66 @@ def render_personal_data_step() -> None:
         "Otro",
         "Prefiere no informar",
     ]
+    saved_sex = saved_personal_data.get("sex")
     guided_sex = st.selectbox(
         "Sexo *",
         sex_options,
-        index=option_index(sex_options, saved_personal_data.get("sex")),
+        index=option_index(
+            sex_options,
+            (
+                saved_sex
+                if saved_sex in sex_options
+                else "Otro" if saved_sex else None
+            ),
+        ),
         placeholder="Seleccione una opción",
     )
-    missing_required_data = (
-        not guided_name.strip()
-        or not guided_dni.strip()
-        or not guided_phone.strip()
-        or not guided_age.strip().isdigit()
-        or int(guided_age.strip()) > 120
-        or not guided_sex
-    )
+    guided_sex_other = ""
+    if guided_sex == "Otro":
+        guided_sex_other = st.text_input(
+            "Por favor especifique",
+            value=(
+                saved_sex or ""
+                if saved_sex not in sex_options
+                else ""
+            ),
+            max_chars=80,
+        )
 
-    if st.button(
-        "Siguiente",
-        type="primary",
-        use_container_width=True,
-        disabled=missing_required_data,
-    ):
+    def continue_from_personal_data() -> bool:
+        if (
+            not guided_name.strip()
+            or not guided_dni.strip()
+            or not guided_phone.strip()
+            or not guided_age.strip().isdigit()
+            or int(guided_age.strip()) > 120
+            or not guided_sex
+        ):
+            st.error("Complete los datos obligatorios para continuar.")
+            return False
+        if guided_sex == "Otro" and not guided_sex_other.strip():
+            st.error("Por favor complete este campo para continuar.")
+            return False
         st.session_state["guided_personal_data"] = {
             "name": guided_name.strip(),
             "age": int(guided_age.strip()),
-            "sex": guided_sex,
+            "sex": guided_sex_other.strip() if guided_sex == "Otro" else guided_sex,
             "dni": guided_dni.strip(),
             "phone": guided_phone.strip(),
             "email": guided_email.strip(),
         }
-        st.session_state["guided_step"] = "problem_details"
-        st.rerun()
+        return True
+
+    render_patient_navigation(
+        "initial",
+        on_next=continue_from_personal_data,
+        next_step="problem_details",
+    )
 
 
 def render_problem_details_step() -> None:
     """Collect the main problem in patient-friendly language."""
     hide_sidebar()
-    render_back_button("personal_data")
     st.title("Cuéntenos su problema")
 
     selected_category = st.session_state.get("selected_initial_category", "")
@@ -1014,6 +1075,712 @@ def render_thanks_step() -> None:
             st.session_state.pop("guided_evaluation_recorded", None)
         st.session_state["guided_step"] = "treatment_expectations"
         st.rerun()
+
+
+def render_problem_details_step() -> None:
+    """Collect the main problem in patient-friendly language."""
+    hide_sidebar()
+    st.title("Cuéntenos su problema")
+
+    selected_category = st.session_state.get("selected_initial_category", "")
+    duration_options = [
+        "Menos de 1 semana",
+        "Menos de 1 mes",
+        "Más de 3 meses",
+        "Más de 1 año",
+    ]
+    saved_problem_details = st.session_state.get("guided_problem_details", {})
+    category_fields = {
+        "Insomnio": {
+            "label": "¿Qué problema tiene con el sueño?",
+            "options": [
+                "Me cuesta dormir",
+                "Me despierto varias veces",
+                "Me despierto muy temprano",
+                "Duermo pero no descanso",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Estrés o ansiedad": {
+            "label": "¿Qué siente principalmente?",
+            "options": [
+                "Nerviosismo",
+                "Preocupación excesiva",
+                "Palpitaciones o tensión",
+                "Ataques de ansiedad",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Tristeza o depresión": {
+            "label": "¿Qué siente principalmente?",
+            "options": [
+                "Tristeza",
+                "Falta de ganas",
+                "Cansancio emocional",
+                "Pérdida de interés",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Respiración": {
+            "label": "¿Cuál es el problema principal?",
+            "options": [
+                "Falta de aire",
+                "Tos",
+                "Alergia respiratoria",
+                "Asma",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Digestión": {
+            "label": "¿Cuál es el problema principal?",
+            "options": [
+                "Acidez o reflujo",
+                "Distensión abdominal",
+                "Estreñimiento",
+                "Diarrea",
+                "Náuseas",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+        "Salud urinaria, próstata o ginecológica": {
+            "label": "¿Cuál es el problema principal?",
+            "options": [
+                "Orinar frecuentemente",
+                "Ardor al orinar",
+                "Dolor pélvico",
+                "Síntomas prostáticos",
+                "Síntomas ginecológicos",
+                "Otro",
+            ],
+            "slider_label": "¿Cuánto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchísimo.",
+        },
+    }
+
+    other_problem_detail = ""
+    if selected_category == "Otro problema de salud":
+        problem = st.session_state.get("other_health_problem_description", "")
+        st.write(f"**Problema o síntoma principal:** {problem}")
+        slider_label = "¿Cuánto afecta su vida diaria?"
+        caption = "0 = nada, 10 = muchísimo."
+    elif selected_category == "Dolor y movilidad":
+        problem = st.text_input(
+            "¿Cuál es el problema que desea tratar?",
+            value=saved_problem_details.get("problem", ""),
+            placeholder="Ejemplo: dolor lumbar, dolor de rodilla, dolor cervical.",
+        )
+        slider_label = "¿Qué intensidad tiene hoy?"
+        caption = "0 = nada, 10 = máximo."
+    else:
+        field_config = category_fields.get(selected_category, {})
+        problem_options = field_config.get("options", ["Otro"])
+        saved_problem = saved_problem_details.get("problem")
+        problem = st.selectbox(
+            field_config.get("label", "¿Cuál es el problema principal?"),
+            problem_options,
+            index=option_index(
+                problem_options,
+                saved_problem
+                if saved_problem in problem_options
+                else "Otro" if saved_problem else None,
+            ),
+            placeholder="Seleccione una opción",
+        )
+        if problem == "Otro":
+            other_problem_detail = st.text_area(
+                "Por favor describa brevemente el problema principal",
+                value=(
+                    saved_problem
+                    if isinstance(saved_problem, str)
+                    and saved_problem not in problem_options
+                    else ""
+                ),
+                max_chars=500,
+            )
+            show_dictation_help()
+        slider_label = field_config.get(
+            "slider_label",
+            "¿Cuánto afecta su vida diaria?",
+        )
+        caption = field_config.get("caption", "0 = nada, 10 = muchísimo.")
+
+    duration = st.selectbox(
+        "¿Hace cuánto tiempo lo tiene?",
+        duration_options,
+        index=option_index(duration_options, saved_problem_details.get("duration")),
+        placeholder="Seleccione una opción",
+    )
+    intensity = st.slider(
+        slider_label,
+        min_value=0,
+        max_value=10,
+        value=int(saved_problem_details.get("intensity", 0)),
+        help=caption,
+    )
+    st.caption(caption)
+
+    def continue_from_problem_details() -> bool:
+        problem_text = problem.strip() if isinstance(problem, str) else problem
+        if problem == "Otro":
+            if not other_problem_detail.strip():
+                st.error("Por favor complete este campo para continuar.")
+                return False
+            problem_text = other_problem_detail.strip()
+        if not problem_text or not duration:
+            st.error("Complete el problema y el tiempo de evolución.")
+            return False
+        st.session_state["guided_problem_details"] = {
+            "problem": problem_text,
+            "duration": duration,
+            "intensity": int(intensity),
+        }
+        return True
+
+    render_patient_navigation(
+        "personal_data",
+        on_next=continue_from_problem_details,
+        next_step="follow_up_orientation",
+    )
+
+
+def render_follow_up_orientation_step() -> None:
+    """Collect simple context to orient the patient follow-up."""
+    hide_sidebar()
+    st.title("Para orientar mejor el seguimiento")
+    saved_follow_up = st.session_state.get("guided_follow_up_orientation", {})
+
+    worsens_with = st.text_input(
+        "¿Qué empeora su problema?",
+        value=saved_follow_up.get("worsens_with", "").replace(
+            "Sin completar",
+            "",
+        ),
+        placeholder="Ejemplo: caminar, estrés, comida, frío, noche, esfuerzo.",
+    )
+    improves_with = st.text_input(
+        "¿Qué mejora su problema?",
+        value=saved_follow_up.get("improves_with", "").replace(
+            "Sin completar",
+            "",
+        ),
+        placeholder="Ejemplo: reposo, calor, medicación, masajes, dormir.",
+    )
+    medication_options = ["No", "Sí", "No estoy seguro/a"]
+    saved_medication = saved_follow_up.get("medication_related")
+    saved_medication_option = (
+        saved_medication
+        if saved_medication in medication_options
+        else "Sí" if saved_medication else None
+    )
+    medication_related = st.radio(
+        "¿Toma actualmente algún medicamento relacionado con este problema?",
+        medication_options,
+        index=option_index(medication_options, saved_medication_option),
+    )
+    medication_name = ""
+    if medication_related == "Sí":
+        medication_name = st.text_input(
+            "¿Cuál?",
+            value=(
+                saved_medication
+                if saved_medication not in medication_options
+                else ""
+            ),
+        )
+    limitation_options = ["No", "Un poco", "Bastante", "Mucho"]
+    daily_limitation = st.radio(
+        "¿Este problema limita sus actividades diarias?",
+        limitation_options,
+        index=option_index(
+            limitation_options,
+            saved_follow_up.get("daily_limitation"),
+        ),
+    )
+
+    def continue_from_follow_up() -> bool:
+        if not medication_related or not daily_limitation:
+            st.error("Complete las opciones para continuar.")
+            return False
+        if medication_related == "Sí" and not medication_name.strip():
+            st.error("Indique cuál medicamento toma.")
+            return False
+
+        medication_summary = medication_related
+        if medication_related == "Sí":
+            medication_summary = medication_name.strip()
+
+        st.session_state["guided_follow_up_orientation"] = {
+            "worsens_with": worsens_with.strip() or "Sin completar",
+            "improves_with": improves_with.strip() or "Sin completar",
+            "medication_related": medication_summary,
+            "daily_limitation": daily_limitation,
+        }
+        return True
+
+    next_step = (
+        "treatment_expectations"
+        if st.session_state.get("selected_initial_category") == "Otro problema de salud"
+        else "adaptive_details"
+    )
+    render_patient_navigation(
+        "problem_details",
+        on_next=continue_from_follow_up,
+        next_step=next_step,
+    )
+
+
+def render_adaptive_details_step() -> None:
+    """Collect a few patient-friendly details for the selected main reason."""
+    hide_sidebar()
+    st.title("Un poco más de detalle")
+
+    selected_category = st.session_state.get("selected_initial_category", "")
+    adaptive_questions = {
+        "Dolor y movilidad": [
+            (
+                "problem_location",
+                "¿Dónde se localiza principalmente el problema?",
+                [
+                    "Cuello",
+                    "Hombro",
+                    "Codo",
+                    "Mano o muñeca",
+                    "Espalda alta",
+                    "Espalda baja",
+                    "Cadera",
+                    "Rodilla",
+                    "Tobillo o pie",
+                    "Varias zonas",
+                    "Otro",
+                ],
+            ),
+            (
+                "pain_spread",
+                "¿El dolor se extiende hacia otra zona?",
+                ["No", "Sí"],
+            ),
+            (
+                "pain_description",
+                "¿Qué describe mejor el dolor?",
+                [
+                    "Punzante",
+                    "Ardor",
+                    "Rigidez",
+                    "Presión",
+                    "Hormigueo",
+                    "Otro",
+                ],
+            ),
+        ],
+        "Insomnio": [
+            (
+                "sleep_problem",
+                "¿Qué ocurre principalmente?",
+                [
+                    "Me cuesta dormirme",
+                    "Me despierto muchas veces",
+                    "Me despierto demasiado temprano",
+                    "Duermo pero no descanso",
+                ],
+            ),
+            (
+                "sleep_hours",
+                "¿Cuántas horas duerme aproximadamente?",
+                ["Menos de 4", "4 a 5", "6 a 7", "Más de 7"],
+            ),
+        ],
+        "Estrés o ansiedad": [
+            (
+                "main_stressor",
+                "¿Qué lo afecta más?",
+                ["Trabajo", "Familia", "Economía", "Salud", "Otro"],
+            ),
+            (
+                "physical_symptoms",
+                "¿Tiene síntomas físicos?",
+                [
+                    "Palpitaciones",
+                    "Tensión muscular",
+                    "Falta de aire",
+                    "Problemas digestivos",
+                    "Ninguno",
+                    "Otro",
+                ],
+            ),
+        ],
+        "Tristeza o depresión": [
+            (
+                "mood_description",
+                "¿Qué describe mejor la situación?",
+                [
+                    "Tristeza persistente",
+                    "Falta de motivación",
+                    "Aislamiento",
+                    "Cansancio emocional",
+                    "Llanto frecuente",
+                ],
+            ),
+        ],
+        "Digestión": [
+            (
+                "digestive_symptom",
+                "¿Cuál es el síntoma principal?",
+                [
+                    "Distensión abdominal",
+                    "Acidez",
+                    "Reflujo",
+                    "Diarrea",
+                    "Constipación",
+                    "Dolor abdominal",
+                ],
+            ),
+        ],
+        "Respiración": [
+            (
+                "breathing_problem",
+                "¿Qué problema presenta?",
+                ["Tos", "Falta de aire", "Congestión nasal", "Rinitis", "Otro"],
+            ),
+        ],
+        "Salud urinaria, próstata o ginecológica": [
+            (
+                "urinary_or_intimate_reason",
+                "¿Cuál es el principal motivo?",
+                ["Urinario", "Prostático", "Ginecológico", "Sexual", "Otro"],
+            ),
+        ],
+    }
+    questions = adaptive_questions.get(selected_category, [])
+    if not questions:
+        st.session_state["guided_step"] = "treatment_expectations"
+        st.rerun()
+
+    saved_adaptive_details = st.session_state.get("guided_adaptive_details", {})
+    answers = {}
+    for key, question, options in questions:
+        saved_item = saved_adaptive_details.get(key, {})
+        saved_answer = saved_item.get("answer")
+        saved_detail_text = (
+            saved_answer
+            if isinstance(saved_answer, str) and saved_answer not in options
+            else ""
+        )
+        display_answer = saved_answer
+        if "Otro" in options and saved_answer not in (None, *options):
+            display_answer = "Otro"
+        if key == "pain_spread" and saved_answer not in (None, *options):
+            display_answer = "Sí"
+        answer = st.radio(
+            question,
+            options,
+            index=option_index(options, display_answer),
+        )
+        other_answer = ""
+        requires_detail = False
+        if answer == "Otro":
+            requires_detail = True
+            labels = {
+                "problem_location": (
+                    "Describa brevemente en qué zona o parte del cuerpo se "
+                    "localiza"
+                ),
+                "pain_description": "Describa brevemente cómo siente el dolor",
+                "main_stressor": (
+                    "Por favor describa brevemente qué situación considera "
+                    "que más influye en su problema actual"
+                ),
+                "physical_symptoms": (
+                    "Describa brevemente los síntomas físicos más importantes"
+                ),
+                "breathing_problem": (
+                    "Describa brevemente el problema respiratorio"
+                ),
+                "urinary_or_intimate_reason": (
+                    "Describa brevemente el motivo principal"
+                ),
+            }
+            other_answer = st.text_area(
+                labels.get(key, "Por favor describa brevemente"),
+                value=saved_detail_text,
+                max_chars=500,
+            )
+            show_dictation_help()
+        elif key == "pain_spread" and answer == "Sí":
+            requires_detail = True
+            other_answer = st.text_area(
+                "Describa hacia dónde se extiende",
+                value=saved_detail_text,
+                max_chars=500,
+            )
+            show_dictation_help()
+        answers[key] = {
+            "question": question,
+            "answer": answer,
+            "other_answer": other_answer,
+            "requires_detail": requires_detail,
+        }
+
+    def continue_from_adaptive_details() -> bool:
+        if any(not item["answer"] for item in answers.values()):
+            st.error("Complete las opciones para continuar.")
+            return False
+        if any(
+            item["requires_detail"] and not item["other_answer"].strip()
+            for item in answers.values()
+        ):
+            st.error("Por favor complete este campo para continuar.")
+            return False
+        saved_answers = {}
+        for key, item in answers.items():
+            saved_item = {
+                "question": item["question"],
+                "answer": item["answer"],
+            }
+            if item["requires_detail"]:
+                saved_item["answer"] = item["other_answer"].strip()
+            saved_answers[key] = saved_item
+        st.session_state["guided_adaptive_details"] = saved_answers
+        return True
+
+    render_patient_navigation(
+        "follow_up_orientation",
+        on_next=continue_from_adaptive_details,
+        next_step="treatment_expectations",
+    )
+
+
+def render_treatment_expectations_step() -> None:
+    """Collect the patient's expectations for acupuncture treatment."""
+    hide_sidebar()
+    st.title("¿Qué espera lograr con el tratamiento de Acupuntura?")
+    st.write(
+        "No existe una respuesta correcta o incorrecta. Queremos conocer cuál "
+        "es el resultado más importante para usted."
+    )
+
+    expectation_options = [
+        "Reducir el dolor",
+        "Eliminar completamente el dolor",
+        "Dormir mejor",
+        "Reducir el estrés o la ansiedad",
+        "Mejorar el estado de ánimo",
+        "Mejorar mi movilidad",
+        "Mejorar mi calidad de vida",
+        "Tener más energía",
+        "Reducir medicamentos",
+        "Suspender medicamentos, si fuera posible",
+        "Evitar una cirugía",
+        "Recuperar una actividad que hoy no puedo realizar",
+        "Mejorar mi rendimiento físico o deportivo",
+        "Mejorar una función específica de mi organismo",
+        "Otro objetivo",
+    ]
+    saved_treatment_expectations = st.session_state.get(
+        "guided_treatment_expectations",
+        {},
+    )
+    saved_expectations = saved_treatment_expectations.get("expectations", [])
+    saved_other_expectation = next(
+        (
+            expectation
+            for expectation in saved_expectations
+            if expectation not in expectation_options
+        ),
+        "",
+    )
+
+    st.write("Seleccione todas las opciones que correspondan")
+    selected_expectations = []
+    selected_count = sum(
+        1
+        for index in range(len(expectation_options))
+        if st.session_state.get(f"treatment_expectation_option_{index}")
+    )
+    for index, expectation in enumerate(expectation_options):
+        option_key = f"treatment_expectation_option_{index}"
+        checked = st.checkbox(
+            expectation,
+            key=option_key,
+            disabled=(
+                selected_count >= 2
+                and not st.session_state.get(option_key, False)
+            ),
+        )
+        if checked:
+            selected_expectations.append(expectation)
+    if selected_count >= 2:
+        st.info(
+            "Para enfocar mejor el seguimiento, registre sus objetivos "
+            "principales. Si desea agregar algo más, puede escribirlo en el "
+            "espacio libre."
+        )
+    other_expectation = ""
+    if "Otro objetivo" in selected_expectations:
+        other_expectation = st.text_area(
+            "Describa brevemente cuál sería el resultado ideal para usted",
+            value=saved_other_expectation,
+            max_chars=500,
+        )
+        show_dictation_help()
+    daily_life_result = st.text_area(
+        "Si el tratamiento fuera exitoso, dentro de 3 a 6 meses, ¿qué sería "
+        "diferente en su vida cotidiana?",
+        value=saved_treatment_expectations.get("daily_life_result", ""),
+        max_chars=800,
+    )
+    show_dictation_help()
+
+    def continue_from_treatment_expectations() -> bool:
+        if not selected_expectations or not daily_life_result.strip():
+            st.error("Complete las opciones para continuar.")
+            return False
+        if "Otro objetivo" in selected_expectations and not other_expectation.strip():
+            st.error("Por favor complete este campo para continuar.")
+            return False
+        expectation_summary = [
+            expectation
+            for expectation in selected_expectations
+            if expectation != "Otro objetivo"
+        ]
+        if "Otro objetivo" in selected_expectations:
+            expectation_summary.append(other_expectation.strip())
+
+        st.session_state["guided_treatment_expectations"] = {
+            "expectations": expectation_summary,
+            "daily_life_result": daily_life_result.strip(),
+        }
+        return True
+
+    previous_step = (
+        "follow_up_orientation"
+        if st.session_state.get("selected_initial_category") == "Otro problema de salud"
+        else "adaptive_details"
+    )
+    render_patient_navigation(
+        previous_step,
+        on_next=continue_from_treatment_expectations,
+        next_step="thanks",
+    )
+
+
+def render_final_closure_step() -> None:
+    """Render the final professional closure after the guided flow is finished."""
+    hide_sidebar()
+    st.markdown("## EVALUACIÓN COMPLETADA CON ÉXITO")
+    st.write(
+        "Gracias por dedicar unos minutos a responder.\n\n"
+        "La información será revisada por el Dr. Mauricio Uehara y contribuirá "
+        "a orientar su estrategia terapéutica.\n\n"
+        "Lo esperamos en su consulta para comenzar el tratamiento.\n\n"
+        "Hasta pronto."
+    )
+
+
+def render_thanks_step() -> None:
+    """Render the patient-friendly completion screen."""
+    hide_sidebar()
+    store_completed_guided_evaluation()
+
+    personal_data = st.session_state.get("guided_personal_data", {})
+    problem_details = st.session_state.get("guided_problem_details", {})
+    follow_up_orientation = st.session_state.get(
+        "guided_follow_up_orientation",
+        {},
+    )
+    adaptive_details = st.session_state.get("guided_adaptive_details", {})
+    treatment_expectations = st.session_state.get(
+        "guided_treatment_expectations",
+        {},
+    )
+    st.title("RESUMEN")
+    st.write(
+        f"**Motivo principal:** "
+        f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
+    )
+    st.write(f"**Nombre:** {personal_data.get('name', 'Sin completar')}")
+    st.write(
+        f"**DNI:** "
+        f"{'registrado' if personal_data.get('dni') else 'no registrado'}"
+    )
+    st.write(
+        f"**Contacto:** "
+        f"{'registrado' if personal_data.get('phone') else 'no registrado'}"
+    )
+    st.write(
+        f"**E-mail:** "
+        f"{'registrado' if personal_data.get('email') else 'no registrado'}"
+    )
+    st.write(
+        f"**Problema o síntoma principal:** "
+        f"{problem_details.get('problem', 'Sin completar')}"
+    )
+    st.write(
+        f"**Tiempo de evolución:** "
+        f"{problem_details.get('duration', 'Sin completar')}"
+    )
+    intensity = problem_details.get("intensity", "Sin completar")
+    st.write(f"**Impacto actual:** {intensity} de 10")
+    st.write(
+        f"**Empeora con:** "
+        f"{follow_up_orientation.get('worsens_with', 'Sin completar')}"
+    )
+    st.write(
+        f"**Mejora con:** "
+        f"{follow_up_orientation.get('improves_with', 'Sin completar')}"
+    )
+    st.write(
+        f"**Medicación relacionada:** "
+        f"{follow_up_orientation.get('medication_related', 'Sin completar')}"
+    )
+    st.write(
+        f"**Limitación diaria:** "
+        f"{follow_up_orientation.get('daily_limitation', 'Sin completar')}"
+    )
+    for item in adaptive_details.values():
+        st.write(f"**{item['question']}** {item['answer']}")
+    expectations = treatment_expectations.get("expectations", [])
+    expectations_text = (
+        ", ".join(expectations)
+        if expectations
+        else "Sin completar"
+    )
+    st.write(f"**Objetivos principales seleccionados:** {expectations_text}")
+    st.write(
+        f"**Expectativa expresada libremente:** "
+        f"{treatment_expectations.get('daily_life_result', 'Sin completar')}"
+    )
+    render_final_closure_step()
+
+    def finish_guided_flow() -> bool:
+        st.session_state["guided_step"] = "final_closure"
+        return True
+
+    def reopen_final_step() -> None:
+        if st.session_state.get("guided_evaluation_recorded"):
+            completed_evaluations = st.session_state.get(
+                "completed_guided_evaluations",
+                [],
+            )
+            if completed_evaluations:
+                completed_evaluations.pop()
+            st.session_state.pop("guided_evaluation_recorded", None)
+
+    render_patient_navigation(
+        "treatment_expectations",
+        next_label="Finalizar",
+        on_back=reopen_final_step,
+        on_next=finish_guided_flow,
+    )
 
 
 def patient_options(patients: pd.DataFrame) -> dict[str, int]:
@@ -2493,6 +3260,9 @@ def main() -> None:
 
     if guided_step == "thanks":
         render_thanks_step()
+        return
+    if guided_step == "final_closure":
+        render_final_closure_step()
         return
 
     with st.sidebar:
