@@ -89,6 +89,7 @@ def render_welcome_step() -> None:
         "de consulta y orientar el seguimiento."
     )
     if st.button("Comenzar", type="primary", use_container_width=True):
+        st.session_state["new_problem_existing_patient"] = False
         st.session_state["guided_step"] = "consent"
         st.rerun()
     if st.button(
@@ -97,6 +98,17 @@ def render_welcome_step() -> None:
     ):
         st.session_state["guided_step"] = "followup_search"
         st.rerun()
+    if st.button(
+        "Soy paciente, nueva consulta",
+        use_container_width=True,
+    ):
+        st.session_state["new_problem_existing_patient"] = True
+        st.session_state["guided_step"] = "consent"
+        st.rerun()
+    st.caption(
+        "Ya fue atendido anteriormente y ahora desea iniciar una nueva "
+        "evaluación."
+    )
     st.divider()
     if st.button("Panel profesional", type="tertiary"):
         st.session_state["guided_step"] = "professional_panel"
@@ -922,6 +934,7 @@ def render_treatment_expectations_step() -> None:
 def clear_guided_flow() -> None:
     """Clear temporary guided intake data from the Streamlit session."""
     for key in (
+        "new_problem_existing_patient",
         "informed_consent_accepted",
         "informed_consent_checkbox",
         "selected_initial_category",
@@ -956,6 +969,7 @@ def ensure_guided_evaluations_table() -> None:
                 dni TEXT,
                 phone TEXT,
                 email TEXT,
+                consultation_type TEXT,
                 main_reason TEXT,
                 main_problem TEXT,
                 duration TEXT,
@@ -974,7 +988,7 @@ def ensure_guided_evaluations_table() -> None:
                 "PRAGMA table_info(guided_evaluations)"
             ).fetchall()
         }
-        for column_name in ("dni", "phone", "email"):
+        for column_name in ("dni", "phone", "email", "consultation_type"):
             if column_name not in existing_columns:
                 connection.execute(
                     f"ALTER TABLE guided_evaluations ADD COLUMN {column_name} TEXT"
@@ -1003,6 +1017,9 @@ def load_completed_guided_evaluations() -> list[dict]:
                 "DNI": "registrado" if row["has_dni"] else "no registrado",
                 "Contacto": (
                     "registrado" if row["has_contact"] else "no registrado"
+                ),
+                "Tipo de consulta": (
+                    row["consultation_type"] or "Primera consulta"
                 ),
                 "Motivo principal": row["main_reason"],
                 "Problema o síntoma principal": row["main_problem"],
@@ -1051,10 +1068,10 @@ def store_completed_guided_evaluation() -> None:
             """
             INSERT INTO guided_evaluations (
                 completed_at, name, has_dni, has_contact, dni, phone, email,
-                main_reason, main_problem, duration, current_impact,
-                global_functional_score, daily_limitation,
+                consultation_type, main_reason, main_problem, duration,
+                current_impact, global_functional_score, daily_limitation,
                 medication_related, medication_name, treatment_expectations
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 datetime.now().isoformat(timespec="minutes"),
@@ -1064,6 +1081,11 @@ def store_completed_guided_evaluation() -> None:
                 personal_data.get("dni"),
                 personal_data.get("phone"),
                 personal_data.get("email"),
+                (
+                    "Soy paciente, nueva consulta"
+                    if st.session_state.get("new_problem_existing_patient")
+                    else "Primera consulta"
+                ),
                 st.session_state.get("selected_initial_category", "Sin completar"),
                 problem_details.get("problem", "Sin completar"),
                 problem_details.get("duration", "Sin completar"),
@@ -1434,6 +1456,12 @@ def render_thanks_step() -> None:
         "Revise la información cargada. Si necesita corregir algo, presione "
         "Atrás."
     )
+    consultation_type = (
+        "Soy paciente, nueva consulta"
+        if st.session_state.get("new_problem_existing_patient")
+        else "Primera consulta"
+    )
+    st.write(f"**Tipo de consulta:** {consultation_type}")
     st.write(
         f"**Motivo principal:** "
         f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
@@ -2164,6 +2192,12 @@ def render_thanks_step() -> None:
         "Revise la información cargada. Si necesita corregir algo, presione "
         "Atrás."
     )
+    consultation_type = (
+        "Soy paciente, nueva consulta"
+        if st.session_state.get("new_problem_existing_patient")
+        else "Primera consulta"
+    )
+    st.write(f"**Tipo de consulta:** {consultation_type}")
     st.write(
         f"**Motivo principal:** "
         f"{st.session_state.get('selected_initial_category', 'Sin completar')}"
@@ -2460,6 +2494,7 @@ def render_professional_panel() -> None:
         "Nombre",
         "DNI",
         "Contacto",
+        "Tipo de consulta",
         "Motivo principal",
         "Problema o síntoma principal",
         "Tiempo de evolución",
@@ -2478,6 +2513,7 @@ def render_professional_panel() -> None:
     csv_columns = [
         "Evaluación ID",
         "Fecha/hora",
+        "Tipo de consulta",
         "Motivo principal",
         "Problema o síntoma principal",
         "Tiempo de evolución",
