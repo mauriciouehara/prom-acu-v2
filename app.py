@@ -1567,16 +1567,18 @@ def render_global_functional_score_step() -> None:
         "realizar sus actividades habituales."
     )
 
-    if "global_functional_score" not in st.session_state:
-        st.session_state["global_functional_score"] = 5
-    st.slider(
+    global_functional_score = st.slider(
         "Estado general durante los últimos 7 días",
         min_value=0,
         max_value=10,
+        value=int(st.session_state.get("global_functional_score", 5)),
         step=1,
-        key="global_functional_score",
     )
     st.caption("0 = Muy mal · 5 = Regular · 10 = Muy bien")
+
+    def continue_from_global_functional_score() -> bool:
+        st.session_state["global_functional_score"] = global_functional_score
+        return True
 
     previous_step = (
         "follow_up_orientation"
@@ -1585,6 +1587,7 @@ def render_global_functional_score_step() -> None:
     )
     render_patient_navigation(
         previous_step,
+        on_next=continue_from_global_functional_score,
         next_step="treatment_expectations",
     )
 
@@ -1776,8 +1779,13 @@ def render_thanks_step() -> None:
     )
     for item in adaptive_details.values():
         st.write(f"**{item['question']}** {item['answer']}")
-    global_score = st.session_state.get("global_functional_score", "Sin completar")
-    st.write(f"**Estado general últimos 7 días:** {global_score}/10")
+    global_functional_score = st.session_state.get(
+        "global_functional_score",
+        "Sin completar",
+    )
+    st.write(
+        f"**Estado general últimos 7 días:** {global_functional_score}/10"
+    )
     expectations = treatment_expectations.get("expectations", [])
     expectations_text = (
         ", ".join(expectations)
