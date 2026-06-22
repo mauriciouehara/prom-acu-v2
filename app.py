@@ -921,6 +921,7 @@ def clear_guided_flow() -> None:
         "guided_problem_details",
         "guided_follow_up_orientation",
         "guided_adaptive_details",
+        "global_functional_score",
         "guided_treatment_expectations",
         "guided_evaluation_recorded",
         "guided_step",
@@ -1322,7 +1323,7 @@ def render_follow_up_orientation_step() -> None:
         return True
 
     next_step = (
-        "treatment_expectations"
+        "global_functional_score"
         if st.session_state.get("selected_initial_category") == "Otro problema de salud"
         else "adaptive_details"
     )
@@ -1456,7 +1457,7 @@ def render_adaptive_details_step() -> None:
     }
     questions = adaptive_questions.get(selected_category, [])
     if not questions:
-        st.session_state["guided_step"] = "treatment_expectations"
+        st.session_state["guided_step"] = "global_functional_score"
         st.rerun()
 
     saved_adaptive_details = st.session_state.get("guided_adaptive_details", {})
@@ -1549,6 +1550,41 @@ def render_adaptive_details_step() -> None:
     render_patient_navigation(
         "follow_up_orientation",
         on_next=continue_from_adaptive_details,
+        next_step="global_functional_score",
+    )
+
+
+def render_global_functional_score_step() -> None:
+    """Collect the patient's overall self-reported state for the last week."""
+    hide_sidebar()
+    st.title("Escala funcional global")
+    st.write(
+        "Pensando en su vida diaria durante los últimos 7 días, "
+        "¿cómo se ha sentido en general?"
+    )
+    st.caption(
+        "Considere su dolor, energía, sueño, estado de ánimo y capacidad para "
+        "realizar sus actividades habituales."
+    )
+
+    if "global_functional_score" not in st.session_state:
+        st.session_state["global_functional_score"] = 5
+    st.slider(
+        "Estado general durante los últimos 7 días",
+        min_value=0,
+        max_value=10,
+        step=1,
+        key="global_functional_score",
+    )
+    st.caption("0 = Muy mal · 5 = Regular · 10 = Muy bien")
+
+    previous_step = (
+        "follow_up_orientation"
+        if st.session_state.get("selected_initial_category") == "Otro problema de salud"
+        else "adaptive_details"
+    )
+    render_patient_navigation(
+        previous_step,
         next_step="treatment_expectations",
     )
 
@@ -1655,13 +1691,8 @@ def render_treatment_expectations_step() -> None:
         }
         return True
 
-    previous_step = (
-        "follow_up_orientation"
-        if st.session_state.get("selected_initial_category") == "Otro problema de salud"
-        else "adaptive_details"
-    )
     render_patient_navigation(
-        previous_step,
+        "global_functional_score",
         on_next=continue_from_treatment_expectations,
         next_step="thanks",
     )
@@ -1745,6 +1776,8 @@ def render_thanks_step() -> None:
     )
     for item in adaptive_details.values():
         st.write(f"**{item['question']}** {item['answer']}")
+    global_score = st.session_state.get("global_functional_score", "Sin completar")
+    st.write(f"**Estado general últimos 7 días:** {global_score}/10")
     expectations = treatment_expectations.get("expectations", [])
     expectations_text = (
         ", ".join(expectations)
@@ -3237,6 +3270,10 @@ def main() -> None:
 
     if guided_step == "adaptive_details":
         render_adaptive_details_step()
+        return
+
+    if guided_step == "global_functional_score":
+        render_global_functional_score_step()
         return
 
     if guided_step == "treatment_expectations":
