@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sqlite3
 from datetime import date, datetime
 
@@ -89,6 +90,10 @@ def render_welcome_step() -> None:
     )
     if st.button("Comenzar", type="primary", use_container_width=True):
         st.session_state["guided_step"] = "consent"
+        st.rerun()
+    st.divider()
+    if st.button("Panel profesional", type="tertiary"):
+        st.session_state["guided_step"] = "professional_panel"
         st.rerun()
 
 
@@ -931,8 +936,71 @@ def clear_guided_flow() -> None:
         st.session_state.pop(f"treatment_expectation_option_{index}", None)
 
 
+def ensure_guided_evaluations_table() -> None:
+    """Create the intake-results table without changing the database module."""
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS guided_evaluations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                completed_at TEXT NOT NULL,
+                name TEXT NOT NULL,
+                has_dni INTEGER NOT NULL DEFAULT 0,
+                has_contact INTEGER NOT NULL DEFAULT 0,
+                main_reason TEXT,
+                main_problem TEXT,
+                duration TEXT,
+                current_impact REAL,
+                global_functional_score REAL,
+                daily_limitation TEXT,
+                medication_related TEXT,
+                medication_name TEXT,
+                treatment_expectations TEXT NOT NULL DEFAULT '[]'
+            )
+            """
+        )
+
+
+def load_completed_guided_evaluations() -> list[dict]:
+    """Load completed patient-flow evaluations for the professional panel."""
+    ensure_guided_evaluations_table()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            "SELECT * FROM guided_evaluations ORDER BY completed_at DESC, id DESC"
+        ).fetchall()
+
+    evaluations = []
+    for row in rows:
+        try:
+            expectations = json.loads(row["treatment_expectations"] or "[]")
+        except (TypeError, json.JSONDecodeError):
+            expectations = []
+        evaluations.append(
+            {
+                "Evaluación ID": f"EVAL-{row['id']:06d}",
+                "Fecha/hora": row["completed_at"],
+                "Nombre": row["name"],
+                "DNI": "registrado" if row["has_dni"] else "no registrado",
+                "Contacto": (
+                    "registrado" if row["has_contact"] else "no registrado"
+                ),
+                "Motivo principal": row["main_reason"],
+                "Problema o síntoma principal": row["main_problem"],
+                "Tiempo de evolución": row["duration"],
+                "Impacto actual": row["current_impact"],
+                "Estado general últimos 7 días": row["global_functional_score"],
+                "Limitación diaria": row["daily_limitation"],
+                "Medicación relacionada": row["medication_related"],
+                "Medicamento informado": row["medication_name"],
+                "Objetivos principales seleccionados": expectations,
+            }
+        )
+    return evaluations
+
+
 def store_completed_guided_evaluation() -> None:
-    """Keep completed guided evaluations in session for the professional panel."""
+    """Persist one completed patient-flow evaluation for the panel."""
     if st.session_state.get("guided_evaluation_recorded"):
         return
 
@@ -946,43 +1014,51 @@ def store_completed_guided_evaluation() -> None:
         "guided_treatment_expectations",
         {},
     )
-    completed_evaluations = st.session_state.setdefault(
-        "completed_guided_evaluations",
-        [],
-    )
-    completed_evaluations.append(
-        {
-            "Fecha/hora": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "Nombre": personal_data.get("name", "Sin completar"),
-            "Motivo principal": st.session_state.get(
-                "selected_initial_category",
-                "Sin completar",
-            ),
-            "Problema o síntoma principal": problem_details.get(
-                "problem",
-                "Sin completar",
-            ),
-            "Tiempo de evolución": problem_details.get(
-                "duration",
-                "Sin completar",
-            ),
-            "Impacto actual": problem_details.get("intensity"),
-            "Limitación diaria": follow_up_orientation.get(
-                "daily_limitation",
-                "Sin completar",
-            ),
-            "Medicación relacionada": follow_up_orientation.get(
-                "medication_related",
-                "Sin completar",
-            ),
-            "Objetivos principales seleccionados": treatment_expectations.get(
-                "expectations",
-                [],
-            ),
-        }
-    )
-    st.session_state["guided_evaluation_recorded"] = True
+    medication_value = follow_up_orientation.get("medication_related")
+    medication_options = {"No", "Sí", "SÃ­", "No estoy seguro/a"}
+    if medication_value in medication_options:
+        medication_related = (
+            "Sí" if medication_value in {"Sí", "SÃ­"} else medication_value
+        )
+        medication_name = None
+    elif medication_value:
+        medication_related = "Sí"
+        medication_name = medication_value
+    else:
+        medication_related = "Sin completar"
+        medication_name = None
 
+    ensure_guided_evaluations_table()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.execute(
+            """
+            INSERT INTO guided_evaluations (
+                completed_at, name, has_dni, has_contact, main_reason,
+                main_problem, duration, current_impact,
+                global_functional_score, daily_limitation,
+                medication_related, medication_name, treatment_expectations
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.now().isoformat(timespec="minutes"),
+                personal_data.get("name", "Sin completar"),
+                int(bool(personal_data.get("dni"))),
+                int(bool(personal_data.get("phone") or personal_data.get("email"))),
+                st.session_state.get("selected_initial_category", "Sin completar"),
+                problem_details.get("problem", "Sin completar"),
+                problem_details.get("duration", "Sin completar"),
+                problem_details.get("intensity"),
+                st.session_state.get("global_functional_score"),
+                follow_up_orientation.get("daily_limitation", "Sin completar"),
+                medication_related,
+                medication_name,
+                json.dumps(
+                    treatment_expectations.get("expectations", []),
+                    ensure_ascii=False,
+                ),
+            ),
+        )
+    st.session_state["guided_evaluation_recorded"] = True
 
 def render_thanks_step() -> None:
     """Render the patient-friendly summary before the final closure."""
@@ -1822,7 +1898,7 @@ def count_values_table(
     field: str,
     labels: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Build a simple count table for professional panel summaries."""
+    """Build a count table while retaining requested zero-count categories."""
     values = [evaluation.get(field) for evaluation in evaluations]
     if labels is None:
         labels = sorted(
@@ -1832,20 +1908,29 @@ def count_values_table(
                 if value not in (None, "", "Sin completar")
             }
         )
-    rows = [
-        {field: label, "Cantidad": values.count(label)}
-        for label in labels
-    ]
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        [{field: label, "Cantidad": values.count(label)} for label in labels]
+    )
 
 
 def render_professional_panel() -> None:
-    """Render session-based summaries for completed guided evaluations."""
-    st.header("Panel profesional")
-    evaluations = st.session_state.get("completed_guided_evaluations", [])
+    """Render the persistent professional overview of completed evaluations."""
+    hide_sidebar()
+    if st.button("Volver al inicio"):
+        st.session_state["guided_step"] = "welcome"
+        st.rerun()
+
+    st.title("Panel profesional")
+    st.subheader("Dr. Mauricio Uehara - PROM-ACU")
+
+    try:
+        evaluations = load_completed_guided_evaluations()
+    except sqlite3.Error as error:
+        st.error(f"No se pudieron recuperar las evaluaciones: {error}")
+        return
 
     if not evaluations:
-        st.info("Todavía no hay evaluaciones completadas en esta sesión.")
+        st.info("Todavía no hay evaluaciones registradas.")
         return
 
     evaluations_df = pd.DataFrame(evaluations)
@@ -1856,69 +1941,83 @@ def render_professional_panel() -> None:
     if reasons_table.empty:
         st.info("Sin datos de motivo principal.")
     else:
-        st.dataframe(
-            reasons_table.rename(columns={"Motivo principal": "Motivo principal"}),
-            hide_index=True,
-            use_container_width=True,
+        reasons_table = reasons_table.sort_values(
+            ["Cantidad", "Motivo principal"], ascending=[False, True]
         )
+        st.dataframe(reasons_table, hide_index=True, use_container_width=True)
 
     impact_values = pd.to_numeric(
-        evaluations_df["Impacto actual"],
-        errors="coerce",
+        evaluations_df["Impacto actual"], errors="coerce"
     ).dropna()
-    average_impact = impact_values.mean() if not impact_values.empty else None
-    st.metric(
+    functional_values = pd.to_numeric(
+        evaluations_df["Estado general últimos 7 días"], errors="coerce"
+    ).dropna()
+    impact_average = impact_values.mean() if not impact_values.empty else None
+    functional_average = (
+        functional_values.mean() if not functional_values.empty else None
+    )
+    average_columns = st.columns(2)
+    average_columns[0].metric(
         "Impacto actual promedio",
-        f"{average_impact:.1f} de 10" if average_impact is not None else "Sin datos",
+        f"{impact_average:.1f} de 10" if impact_average is not None else "Sin datos",
+    )
+    average_columns[1].metric(
+        "Estado general promedio últimos 7 días",
+        (
+            f"{functional_average:.1f} de 10"
+            if functional_average is not None
+            else "Sin datos"
+        ),
     )
 
     st.subheader("Tiempo de evolución")
-    duration_table = count_values_table(
-        evaluations,
-        "Tiempo de evolución",
-        [
-            "Menos de 1 semana",
-            "Menos de 1 mes",
-            "Más de 3 meses",
-            "Más de 1 año",
-        ],
-    )
-    st.dataframe(duration_table, hide_index=True, use_container_width=True)
-
-    st.subheader("Medicación relacionada")
-    medication_rows = []
-    medication_names = []
-    medication_values = [
-        evaluation.get("Medicación relacionada", "Sin completar")
-        for evaluation in evaluations
-    ]
-    for label in ["No", "Sí", "No estoy seguro/a"]:
-        if label == "Sí":
-            count = sum(
-                value not in ("No", "No estoy seguro/a", "Sin completar", "", None)
-                for value in medication_values
-            )
-        else:
-            count = medication_values.count(label)
-        medication_rows.append({"Medicación relacionada": label, "Cantidad": count})
-
-    for value in medication_values:
-        if value not in ("No", "No estoy seguro/a", "Sin completar", "", None):
-            medication_names.append({"Medicamento informado": value})
-
     st.dataframe(
-        pd.DataFrame(medication_rows),
+        count_values_table(
+            evaluations,
+            "Tiempo de evolución",
+            [
+                "Menos de 1 semana",
+                "Menos de 1 mes",
+                "Más de 3 meses",
+                "Más de 1 año",
+            ],
+        ),
         hide_index=True,
         use_container_width=True,
     )
-    if medication_names:
-        st.dataframe(
-            pd.DataFrame(medication_names),
-            hide_index=True,
-            use_container_width=True,
-        )
 
-    st.subheader("Expectativas principales seleccionadas")
+    st.subheader("Limitación diaria")
+    st.dataframe(
+        count_values_table(
+            evaluations,
+            "Limitación diaria",
+            ["No", "Un poco", "Bastante", "Mucho"],
+        ),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    st.subheader("Medicación relacionada")
+    st.dataframe(
+        count_values_table(
+            evaluations,
+            "Medicación relacionada",
+            ["No", "Sí", "No estoy seguro/a"],
+        ),
+        hide_index=True,
+        use_container_width=True,
+    )
+    medication_names = [
+        value
+        for value in evaluations_df["Medicamento informado"].dropna().tolist()
+        if str(value).strip()
+    ]
+    if medication_names:
+        st.markdown("**Medicamentos informados**")
+        for medication_name in medication_names:
+            st.write(f"- {medication_name}")
+
+    st.subheader("Expectativas terapéuticas principales")
     expectation_counts: dict[str, int] = {}
     for evaluation in evaluations:
         for objective in evaluation.get("Objetivos principales seleccionados", []):
@@ -1926,11 +2025,14 @@ def render_professional_panel() -> None:
     expectations_table = pd.DataFrame(
         [
             {"Objetivo": objective, "Cantidad": count}
-            for objective, count in sorted(expectation_counts.items())
-        ]
+            for objective, count in sorted(
+                expectation_counts.items(), key=lambda item: (-item[1], item[0])
+            )
+        ],
+        columns=["Objetivo", "Cantidad"],
     )
     if expectations_table.empty:
-        st.info("Sin datos de expectativas principales.")
+        st.info("Sin datos de objetivos terapéuticos.")
     else:
         st.dataframe(expectations_table, hide_index=True, use_container_width=True)
 
@@ -1939,23 +2041,50 @@ def render_professional_panel() -> None:
     display_df["Objetivos principales seleccionados"] = display_df[
         "Objetivos principales seleccionados"
     ].apply(lambda values: ", ".join(values) if values else "Sin completar")
+    list_columns = [
+        "Fecha/hora",
+        "Nombre",
+        "DNI",
+        "Contacto",
+        "Motivo principal",
+        "Problema o síntoma principal",
+        "Tiempo de evolución",
+        "Impacto actual",
+        "Estado general últimos 7 días",
+        "Limitación diaria",
+        "Medicación relacionada",
+        "Objetivos principales seleccionados",
+    ]
     st.dataframe(
-        display_df[
-            [
-                "Fecha/hora",
-                "Nombre",
-                "Motivo principal",
-                "Problema o síntoma principal",
-                "Tiempo de evolución",
-                "Impacto actual",
-                "Limitación diaria",
-                "Objetivos principales seleccionados",
-            ]
-        ],
+        display_df[list_columns],
         hide_index=True,
         use_container_width=True,
     )
 
+    csv_columns = [
+        "Evaluación ID",
+        "Fecha/hora",
+        "Motivo principal",
+        "Problema o síntoma principal",
+        "Tiempo de evolución",
+        "Impacto actual",
+        "Estado general últimos 7 días",
+        "Limitación diaria",
+        "Medicación relacionada",
+        "Medicamento informado",
+        "Objetivos principales seleccionados",
+    ]
+    pseudonymized_csv = display_df[csv_columns].to_csv(index=False)
+    st.download_button(
+        "Descargar CSV seudonimizado",
+        data=pseudonymized_csv.encode("utf-8-sig"),
+        file_name="prom_acu_evaluaciones_seudonimizadas.csv",
+        mime="text/csv",
+        type="primary",
+    )
+    st.caption(
+        "La descarga no incluye nombre, DNI, teléfono ni correo electrónico."
+    )
 
 def render_home() -> None:
     st.title("PROM-ACU")
@@ -3254,6 +3383,10 @@ def main() -> None:
     guided_step = st.session_state.get("guided_step", "welcome")
     if guided_step == "welcome":
         render_welcome_step()
+        return
+
+    if guided_step == "professional_panel":
+        render_professional_panel()
         return
 
     if guided_step == "consent":
