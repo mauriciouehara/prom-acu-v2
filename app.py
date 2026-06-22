@@ -79,41 +79,86 @@ def hide_sidebar() -> None:
 
 
 def render_welcome_step() -> None:
-    """Show a friendly welcome before the guided intake starts."""
+    """Show three accessible consultation choices as distinct cards."""
     hide_sidebar()
+    st.markdown(
+        """
+        <style>
+            div[data-testid="stVerticalBlockBorderWrapper"]
+            div[data-testid="stButton"] button {
+                min-height: 4rem;
+                font-size: 1.3rem;
+                font-weight: 700;
+                line-height: 1.25;
+                white-space: normal;
+            }
+            .welcome-card-help {
+                font-size: 1.2rem;
+                line-height: 1.55;
+                color: #30343b;
+                margin: 0.35rem 0 0.2rem 0;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     st.title("¡Bienvenida/o!")
     st.subheader("ACUPUNTURA NEUROBIOENERGÉTICA")
     st.write("Dr. Mauricio Uehara")
-    st.write(
-        "Vamos a realizar una evaluación simple para conocer mejor su motivo "
-        "de consulta y orientar el seguimiento."
-    )
-    if st.button("Comenzar", type="primary", use_container_width=True):
-        st.session_state["new_problem_existing_patient"] = False
-        st.session_state["guided_step"] = "consent"
-        st.rerun()
-    if st.button(
-        "Ya soy paciente - registrar evolución",
-        use_container_width=True,
-    ):
-        st.session_state["guided_step"] = "followup_search"
-        st.rerun()
-    if st.button(
-        "Soy paciente, nueva consulta",
-        use_container_width=True,
-    ):
-        st.session_state["new_problem_existing_patient"] = True
-        st.session_state["guided_step"] = "consent"
-        st.rerun()
-    st.caption(
-        "Ya fue atendido anteriormente y ahora desea iniciar una nueva "
-        "evaluación."
-    )
-    st.divider()
-    if st.button("Panel profesional", type="tertiary"):
-        st.session_state["guided_step"] = "professional_panel"
-        st.rerun()
+    st.write("Seleccione la opción que mejor describe su situación.")
 
+    with st.container(border=True):
+        if st.button(
+            "Soy paciente nuevo",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state["tipo_consulta"] = "Paciente nuevo"
+            st.session_state["new_problem_existing_patient"] = False
+            st.session_state["guided_step"] = "consent"
+            st.rerun()
+        st.markdown(
+            '<p class="welcome-card-help">Primera vez que consulta con el '
+            "Dr. Mauricio Uehara.</p>",
+            unsafe_allow_html=True,
+        )
+
+    with st.container(border=True):
+        if st.button(
+            "Estoy en tratamiento",
+            use_container_width=True,
+        ):
+            st.session_state["tipo_consulta"] = "Seguimiento de tratamiento"
+            st.session_state["guided_step"] = "followup_search"
+            st.rerun()
+        st.markdown(
+            '<p class="welcome-card-help">Ya inició sesiones y quiere '
+            "registrar cómo evolucionó desde la última consulta.</p>",
+            unsafe_allow_html=True,
+        )
+
+    with st.container(border=True):
+        if st.button(
+            "Ya fui paciente y quiero una nueva consulta",
+            use_container_width=True,
+        ):
+            st.session_state["tipo_consulta"] = (
+                "Nueva consulta de paciente ya registrado"
+            )
+            st.session_state["new_problem_existing_patient"] = True
+            st.session_state["guided_step"] = "consent"
+            st.rerun()
+        st.markdown(
+            '<p class="welcome-card-help">Fue atendido anteriormente y ahora '
+            "desea consultar nuevamente, por recaída o por otra dolencia.</p>",
+            unsafe_allow_html=True,
+        )
+
+    st.divider()
+    with st.expander("Acceso profesional", expanded=False):
+        if st.button("Panel profesional", type="tertiary"):
+            st.session_state["guided_step"] = "professional_panel"
+            st.rerun()
 
 def render_back_button(previous_step: str) -> None:
     """Allow patients to return to the previous guided step without clearing data."""
@@ -935,6 +980,7 @@ def clear_guided_flow() -> None:
     """Clear temporary guided intake data from the Streamlit session."""
     for key in (
         "new_problem_existing_patient",
+        "tipo_consulta",
         "informed_consent_accepted",
         "informed_consent_checkbox",
         "selected_initial_category",
@@ -1081,11 +1127,7 @@ def store_completed_guided_evaluation() -> None:
                 personal_data.get("dni"),
                 personal_data.get("phone"),
                 personal_data.get("email"),
-                (
-                    "Soy paciente, nueva consulta"
-                    if st.session_state.get("new_problem_existing_patient")
-                    else "Primera consulta"
-                ),
+                st.session_state.get("tipo_consulta", "Paciente nuevo"),
                 st.session_state.get("selected_initial_category", "Sin completar"),
                 problem_details.get("problem", "Sin completar"),
                 problem_details.get("duration", "Sin completar"),
@@ -1114,6 +1156,7 @@ def ensure_patient_followups_table() -> None:
                 patient_ref INTEGER NOT NULL,
                 patient_name_snapshot TEXT NOT NULL,
                 completed_at TEXT NOT NULL,
+                consultation_type TEXT NOT NULL DEFAULT 'Seguimiento de tratamiento',
                 comparison TEXT NOT NULL,
                 symptom_intensity REAL NOT NULL CHECK (
                     symptom_intensity BETWEEN 0 AND 10
@@ -1125,7 +1168,18 @@ def ensure_patient_followups_table() -> None:
             )
             """
         )
-
+        existing_columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(patient_followups)"
+            ).fetchall()
+        }
+        if "consultation_type" not in existing_columns:
+            connection.execute(
+                """ALTER TABLE patient_followups
+                ADD COLUMN consultation_type TEXT NOT NULL
+                DEFAULT 'Seguimiento de tratamiento'"""
+            )
 
 def _search_text_matches(query: str, *values: object) -> bool:
     """Match names normally and identifiers ignoring phone punctuation."""
@@ -1196,15 +1250,20 @@ def save_patient_followup(
             """
             INSERT INTO patient_followups (
                 patient_source, patient_ref, patient_name_snapshot,
-                completed_at, comparison, symptom_intensity, global_score,
-                medication_change, post_session_discomfort, changes_text
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                completed_at, consultation_type, comparison,
+                symptom_intensity, global_score, medication_change,
+                post_session_discomfort, changes_text
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 patient["source"],
                 int(patient["ref"]),
                 patient["name"],
                 datetime.now().isoformat(timespec="seconds"),
+                st.session_state.get(
+                    "tipo_consulta",
+                    "Seguimiento de tratamiento",
+                ),
                 comparison,
                 int(symptom_intensity),
                 int(global_score),
@@ -1223,6 +1282,7 @@ def load_patient_followups(patient_source: str, patient_ref: int) -> pd.DataFram
             """
             SELECT
                 completed_at AS "Fecha/hora",
+                consultation_type AS "Tipo de consulta",
                 comparison AS "Comparación con consulta anterior",
                 symptom_intensity AS "Intensidad del síntoma",
                 global_score AS "Estado general últimos 7 días",
@@ -1420,6 +1480,7 @@ def clear_followup_flow() -> None:
         "followup_search_results",
         "followup_selected_label",
         "followup_patient",
+        "tipo_consulta",
     ):
         st.session_state.pop(key, None)
 
@@ -1456,10 +1517,9 @@ def render_thanks_step() -> None:
         "Revise la información cargada. Si necesita corregir algo, presione "
         "Atrás."
     )
-    consultation_type = (
-        "Soy paciente, nueva consulta"
-        if st.session_state.get("new_problem_existing_patient")
-        else "Primera consulta"
+    consultation_type = st.session_state.get(
+        "tipo_consulta",
+        "Paciente nuevo",
     )
     st.write(f"**Tipo de consulta:** {consultation_type}")
     st.write(
@@ -2192,10 +2252,9 @@ def render_thanks_step() -> None:
         "Revise la información cargada. Si necesita corregir algo, presione "
         "Atrás."
     )
-    consultation_type = (
-        "Soy paciente, nueva consulta"
-        if st.session_state.get("new_problem_existing_patient")
-        else "Primera consulta"
+    consultation_type = st.session_state.get(
+        "tipo_consulta",
+        "Paciente nuevo",
     )
     st.write(f"**Tipo de consulta:** {consultation_type}")
     st.write(
