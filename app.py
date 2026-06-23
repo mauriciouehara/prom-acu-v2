@@ -105,7 +105,7 @@ def render_welcome_step() -> None:
     st.title("¡Bienvenida/o!")
     st.subheader("ACUPUNTURA NEUROBIOENERGÉTICA")
     st.write("Dr. Mauricio Uehara")
-    st.write("Seleccione la opción que mejor describe su situación.")
+    st.write("¿Qué tipo de consulta desea realizar?")
 
     with st.container(border=True):
         if st.button(
@@ -125,15 +125,15 @@ def render_welcome_step() -> None:
 
     with st.container(border=True):
         if st.button(
-            "Estoy en tratamiento",
+            "Estoy realizando tratamiento",
             use_container_width=True,
         ):
             st.session_state["tipo_consulta"] = "Seguimiento de tratamiento"
             st.session_state["guided_step"] = "followup_search"
             st.rerun()
         st.markdown(
-            '<p class="welcome-card-help">Ya inició sesiones y quiere '
-            "registrar cómo evolucionó desde la última consulta.</p>",
+            '<p class="welcome-card-help">Ya comenzó sus sesiones y desea '
+            "informar cómo evolucionó desde la última consulta.</p>",
             unsafe_allow_html=True,
         )
 
@@ -155,10 +155,9 @@ def render_welcome_step() -> None:
         )
 
     st.divider()
-    with st.expander("Acceso profesional", expanded=False):
-        if st.button("Panel profesional", type="tertiary"):
-            st.session_state["guided_step"] = "professional_panel"
-            st.rerun()
+    if st.button("Panel profesional", type="tertiary"):
+        st.session_state["guided_step"] = "professional_panel"
+        st.rerun()
 
 def render_back_button(previous_step: str) -> None:
     """Allow patients to return to the previous guided step without clearing data."""
@@ -201,10 +200,7 @@ def render_patient_navigation(
 
 def show_dictation_help() -> None:
     """Show a short mobile dictation hint below long text fields."""
-    st.caption(
-        "También puede usar el micrófono del teclado de su celular para "
-        "dictar la respuesta."
-    )
+    st.caption("Puede escribir o dictar desde el micrófono del celular.")
 
 
 def render_informed_consent_step() -> None:
@@ -553,452 +549,6 @@ def render_problem_details_step() -> None:
         st.rerun()
 
 
-def render_follow_up_orientation_step() -> None:
-    """Collect simple context to orient the patient follow-up."""
-    hide_sidebar()
-    render_back_button("problem_details")
-    st.title("Para orientar mejor el seguimiento")
-    saved_follow_up = st.session_state.get("guided_follow_up_orientation", {})
-
-    with st.form("guided_follow_up_orientation_form"):
-        worsens_with = st.text_input(
-            "¿Qué empeora su problema?",
-            value=saved_follow_up.get("worsens_with", "").replace(
-                "Sin completar",
-                "",
-            ),
-            placeholder="Ejemplo: caminar, estrés, comida, frío, noche, esfuerzo.",
-        )
-        improves_with = st.text_input(
-            "¿Qué mejora su problema?",
-            value=saved_follow_up.get("improves_with", "").replace(
-                "Sin completar",
-                "",
-            ),
-            placeholder="Ejemplo: reposo, calor, medicación, masajes, dormir.",
-        )
-        medication_options = ["No", "Sí", "No estoy seguro/a"]
-        saved_medication = saved_follow_up.get("medication_related")
-        saved_medication_option = (
-            saved_medication
-            if saved_medication in medication_options
-            else "Sí" if saved_medication else None
-        )
-        medication_related = st.radio(
-            "¿Toma actualmente algún medicamento relacionado con este problema?",
-            medication_options,
-            index=option_index(medication_options, saved_medication_option),
-        )
-        medication_name = ""
-        if medication_related == "Sí":
-            medication_name = st.text_input(
-                "¿Cuál?",
-                value=(
-                    saved_medication
-                    if saved_medication not in medication_options
-                    else ""
-                ),
-            )
-        limitation_options = ["No", "Un poco", "Bastante", "Mucho"]
-        daily_limitation = st.radio(
-            "¿Este problema limita sus actividades diarias?",
-            limitation_options,
-            index=option_index(
-                limitation_options,
-                saved_follow_up.get("daily_limitation"),
-            ),
-        )
-        submitted = st.form_submit_button(
-            "Finalizar",
-            type="primary",
-            use_container_width=True,
-        )
-
-    if submitted:
-        if not medication_related or not daily_limitation:
-            st.error("Complete las opciones para finalizar.")
-            return
-        if medication_related == "Sí" and not medication_name.strip():
-            st.error("Indique cuál medicamento toma.")
-            return
-
-        medication_summary = medication_related
-        if medication_related == "Sí":
-            medication_summary = medication_name.strip()
-
-        st.session_state["guided_follow_up_orientation"] = {
-            "worsens_with": worsens_with.strip() or "Sin completar",
-            "improves_with": improves_with.strip() or "Sin completar",
-            "medication_related": medication_summary,
-            "daily_limitation": daily_limitation,
-        }
-        if st.session_state.get("selected_initial_category") == "Otro problema de salud":
-            st.session_state["guided_step"] = "treatment_expectations"
-        else:
-            st.session_state["guided_step"] = "adaptive_details"
-        st.rerun()
-
-
-def render_adaptive_details_step() -> None:
-    """Collect a few patient-friendly details for the selected main reason."""
-    hide_sidebar()
-    render_back_button("follow_up_orientation")
-    st.title("Un poco más de detalle")
-
-    selected_category = st.session_state.get("selected_initial_category", "")
-    adaptive_questions = {
-        "Dolor y movilidad": [
-            (
-                "problem_location",
-                "¿Dónde se localiza principalmente el problema?",
-                [
-                    "Cuello",
-                    "Hombro",
-                    "Codo",
-                    "Mano o muñeca",
-                    "Espalda alta",
-                    "Espalda baja",
-                    "Cadera",
-                    "Rodilla",
-                    "Tobillo o pie",
-                    "Varias zonas",
-                    "Otro",
-                ],
-            ),
-            (
-                "pain_spread",
-                "¿El dolor se extiende hacia otra zona?",
-                ["No", "Sí"],
-            ),
-            (
-                "pain_description",
-                "¿Qué describe mejor el dolor?",
-                [
-                    "Punzante",
-                    "Ardor",
-                    "Rigidez",
-                    "Presión",
-                    "Hormigueo",
-                    "Otro",
-                ],
-            ),
-        ],
-        "Insomnio": [
-            (
-                "sleep_problem",
-                "¿Qué ocurre principalmente?",
-                [
-                    "Me cuesta dormirme",
-                    "Me despierto muchas veces",
-                    "Me despierto demasiado temprano",
-                    "Duermo pero no descanso",
-                ],
-            ),
-            (
-                "sleep_hours",
-                "¿Cuántas horas duerme aproximadamente?",
-                ["Menos de 4", "4 a 5", "6 a 7", "Más de 7"],
-            ),
-        ],
-        "Estrés o ansiedad": [
-            (
-                "main_stressor",
-                "¿Qué lo afecta más?",
-                ["Trabajo", "Familia", "Economía", "Salud", "Otro"],
-            ),
-            (
-                "physical_symptoms",
-                "¿Tiene síntomas físicos?",
-                [
-                    "Palpitaciones",
-                    "Tensión muscular",
-                    "Falta de aire",
-                    "Problemas digestivos",
-                    "Ninguno",
-                    "Otro",
-                ],
-            ),
-        ],
-        "Tristeza o depresión": [
-            (
-                "mood_description",
-                "¿Qué describe mejor la situación?",
-                [
-                    "Tristeza persistente",
-                    "Falta de motivación",
-                    "Aislamiento",
-                    "Cansancio emocional",
-                    "Llanto frecuente",
-                ],
-            ),
-        ],
-        "Digestión": [
-            (
-                "digestive_symptom",
-                "¿Cuál es el síntoma principal?",
-                [
-                    "Distensión abdominal",
-                    "Acidez",
-                    "Reflujo",
-                    "Diarrea",
-                    "Constipación",
-                    "Dolor abdominal",
-                ],
-            ),
-        ],
-        "Respiración": [
-            (
-                "breathing_problem",
-                "¿Qué problema presenta?",
-                ["Tos", "Falta de aire", "Congestión nasal", "Rinitis", "Otro"],
-            ),
-        ],
-        "Salud urinaria, próstata o ginecológica": [
-            (
-                "urinary_or_intimate_reason",
-                "¿Cuál es el principal motivo?",
-                ["Urinario", "Prostático", "Ginecológico", "Sexual", "Otro"],
-            ),
-        ],
-    }
-    questions = adaptive_questions.get(selected_category, [])
-    if not questions:
-        st.session_state["guided_step"] = "treatment_expectations"
-        st.rerun()
-
-    saved_adaptive_details = st.session_state.get("guided_adaptive_details", {})
-    answers = {}
-    with st.form("guided_adaptive_details_form"):
-        for key, question, options in questions:
-            saved_item = saved_adaptive_details.get(key, {})
-            saved_answer = saved_item.get("answer")
-            saved_detail_text = (
-                saved_answer
-                if isinstance(saved_answer, str) and saved_answer not in options
-                else ""
-            )
-            display_answer = saved_answer
-            if key in (
-                "problem_location",
-                "pain_description",
-                "main_stressor",
-                "physical_symptoms",
-            ) and saved_answer not in (None, *options):
-                display_answer = "Otro"
-            if key == "pain_spread" and saved_answer not in (None, *options):
-                display_answer = "Sí"
-            answer = st.radio(
-                question,
-                options,
-                index=option_index(options, display_answer),
-            )
-            other_answer = ""
-            requires_detail = False
-            if key == "problem_location" and answer == "Otro":
-                requires_detail = True
-                other_answer = st.text_area(
-                    "Describa brevemente en qué zona o parte del cuerpo se "
-                    "localiza",
-                    value=saved_detail_text,
-                    max_chars=500,
-                )
-            if key == "pain_spread" and answer == "Sí":
-                requires_detail = True
-                other_answer = st.text_area(
-                    "Describa hacia dónde se extiende",
-                    value=saved_detail_text,
-                    max_chars=500,
-                )
-            if key == "pain_description" and answer == "Otro":
-                requires_detail = True
-                other_answer = st.text_area(
-                    "Describa brevemente cómo siente el dolor",
-                    value=saved_detail_text,
-                    max_chars=500,
-                )
-            if key == "main_stressor" and answer == "Otro":
-                requires_detail = True
-                other_answer = st.text_area(
-                    "Por favor describa brevemente qué situación considera "
-                    "que más influye en su problema actual",
-                    value=saved_detail_text,
-                    max_chars=500,
-                )
-            if key == "physical_symptoms" and answer == "Otro":
-                requires_detail = True
-                other_answer = st.text_area(
-                    "Describa brevemente los síntomas físicos más importantes",
-                    value=saved_detail_text,
-                    max_chars=500,
-                )
-            answers[key] = {
-                "question": question,
-                "answer": answer,
-                "other_answer": other_answer,
-                "requires_detail": requires_detail,
-            }
-        submitted = st.form_submit_button(
-            "Continuar",
-            type="primary",
-            use_container_width=True,
-        )
-
-    if submitted:
-        if any(not item["answer"] for item in answers.values()):
-            st.error("Complete las opciones para continuar.")
-            return
-        if any(
-            item["requires_detail"] and not item["other_answer"].strip()
-            for item in answers.values()
-        ):
-            st.error("Complete el detalle solicitado para continuar.")
-            return
-        for item in answers.values():
-            if item["requires_detail"]:
-                item["answer"] = item["other_answer"].strip()
-            item.pop("other_answer", None)
-            item.pop("requires_detail", None)
-        st.session_state["guided_adaptive_details"] = answers
-        st.session_state["guided_step"] = "treatment_expectations"
-        st.rerun()
-
-
-def render_treatment_expectations_step() -> None:
-    """Collect the patient's expectations for acupuncture treatment."""
-    hide_sidebar()
-    if st.session_state.get("selected_initial_category") == "Otro problema de salud":
-        render_back_button("follow_up_orientation")
-    else:
-        render_back_button("adaptive_details")
-    st.title("¿Qué espera lograr con el tratamiento de Acupuntura?")
-    st.write(
-        "No existe una respuesta correcta o incorrecta. Queremos conocer cuál "
-        "es el resultado más importante para usted."
-    )
-
-    expectation_options = [
-        "Reducir el dolor",
-        "Eliminar completamente el dolor",
-        "Dormir mejor",
-        "Reducir el estrés o la ansiedad",
-        "Mejorar el estado de ánimo",
-        "Mejorar mi movilidad",
-        "Mejorar mi calidad de vida",
-        "Tener más energía",
-        "Reducir medicamentos",
-        "Suspender medicamentos, si fuera posible",
-        "Evitar una cirugía",
-        "Recuperar una actividad que hoy no puedo realizar",
-        "Mejorar mi rendimiento físico o deportivo",
-        "Mejorar una función específica de mi organismo",
-        "Otro objetivo",
-    ]
-    saved_treatment_expectations = st.session_state.get(
-        "guided_treatment_expectations",
-        {},
-    )
-    saved_expectations = saved_treatment_expectations.get("expectations", [])
-    saved_other_expectation = next(
-        (
-            expectation
-            for expectation in saved_expectations
-            if expectation not in expectation_options
-        ),
-        "",
-    )
-
-    st.write("Seleccione todas las opciones que correspondan")
-    selected_expectations = []
-    selected_count = sum(
-        1
-        for index in range(len(expectation_options))
-        if st.session_state.get(f"treatment_expectation_option_{index}")
-    )
-    for index, expectation in enumerate(expectation_options):
-        option_key = f"treatment_expectation_option_{index}"
-        checked = st.checkbox(
-            expectation,
-            key=option_key,
-            disabled=(
-                selected_count >= 2
-                and not st.session_state.get(option_key, False)
-            ),
-        )
-        if checked:
-            selected_expectations.append(expectation)
-    if selected_count >= 2:
-        st.info(
-            "Para enfocar mejor el seguimiento, registre sus objetivos "
-            "principales. Si desea agregar algo más, puede escribirlo en el "
-            "espacio libre."
-        )
-    other_expectation = ""
-    if "Otro objetivo" in selected_expectations:
-        other_expectation = st.text_area(
-            "Describa brevemente cuál sería el resultado ideal para usted",
-            value=saved_other_expectation,
-            max_chars=500,
-        )
-    daily_life_result = st.text_area(
-        "Si el tratamiento fuera exitoso, dentro de 3 a 6 meses, ¿qué sería "
-        "diferente en su vida cotidiana?",
-        value=saved_treatment_expectations.get("daily_life_result", ""),
-        max_chars=800,
-    )
-    missing_expectations = (
-        not selected_expectations
-        or (
-            "Otro objetivo" in selected_expectations
-            and not other_expectation.strip()
-        )
-        or not daily_life_result.strip()
-    )
-
-    if st.button(
-        "Continuar",
-        type="primary",
-        use_container_width=True,
-        disabled=missing_expectations,
-    ):
-        expectation_summary = [
-            expectation
-            for expectation in selected_expectations
-            if expectation != "Otro objetivo"
-        ]
-        if "Otro objetivo" in selected_expectations:
-            expectation_summary.append(other_expectation.strip())
-
-        st.session_state["guided_treatment_expectations"] = {
-            "expectations": expectation_summary,
-            "daily_life_result": daily_life_result.strip(),
-        }
-        st.session_state["guided_step"] = "thanks"
-        st.rerun()
-
-
-def clear_guided_flow() -> None:
-    """Clear temporary guided intake data from the Streamlit session."""
-    for key in (
-        "new_problem_existing_patient",
-        "tipo_consulta",
-        "informed_consent_accepted",
-        "informed_consent_checkbox",
-        "selected_initial_category",
-        "initial_category_selection",
-        "other_health_problem_description_input",
-        "other_health_problem_description",
-        "guided_personal_data",
-        "guided_problem_details",
-        "guided_follow_up_orientation",
-        "guided_adaptive_details",
-        "global_functional_score",
-        "guided_treatment_expectations",
-        "guided_evaluation_recorded",
-        "guided_step",
-    ):
-        st.session_state.pop(key, None)
-    for index in range(15):
-        st.session_state.pop(f"treatment_expectation_option_{index}", None)
 
 
 def ensure_guided_evaluations_table() -> None:
@@ -1028,56 +578,41 @@ def ensure_guided_evaluations_table() -> None:
             )
             """
         )
-        existing_columns = {
-            row[1]
-            for row in connection.execute(
-                "PRAGMA table_info(guided_evaluations)"
-            ).fetchall()
-        }
+        existing_columns = {row[1] for row in connection.execute("PRAGMA table_info(guided_evaluations)").fetchall()}
         for column_name in ("dni", "phone", "email", "consultation_type"):
             if column_name not in existing_columns:
-                connection.execute(
-                    f"ALTER TABLE guided_evaluations ADD COLUMN {column_name} TEXT"
-                )
+                connection.execute(f"ALTER TABLE guided_evaluations ADD COLUMN {column_name} TEXT")
+
 
 def load_completed_guided_evaluations() -> list[dict]:
     """Load completed patient-flow evaluations for the professional panel."""
     ensure_guided_evaluations_table()
     with sqlite3.connect(database_module.DB_PATH) as connection:
         connection.row_factory = sqlite3.Row
-        rows = connection.execute(
-            "SELECT * FROM guided_evaluations ORDER BY completed_at DESC, id DESC"
-        ).fetchall()
-
+        rows = connection.execute("SELECT * FROM guided_evaluations ORDER BY completed_at DESC, id DESC").fetchall()
     evaluations = []
     for row in rows:
         try:
             expectations = json.loads(row["treatment_expectations"] or "[]")
         except (TypeError, json.JSONDecodeError):
             expectations = []
-        evaluations.append(
-            {
-                "Evaluación ID": f"EVAL-{row['id']:06d}",
-                "Fecha/hora": row["completed_at"],
-                "Nombre": row["name"],
-                "DNI": "registrado" if row["has_dni"] else "no registrado",
-                "Contacto": (
-                    "registrado" if row["has_contact"] else "no registrado"
-                ),
-                "Tipo de consulta": (
-                    row["consultation_type"] or "Primera consulta"
-                ),
-                "Motivo principal": row["main_reason"],
-                "Problema o síntoma principal": row["main_problem"],
-                "Tiempo de evolución": row["duration"],
-                "Impacto actual": row["current_impact"],
-                "Estado general últimos 7 días": row["global_functional_score"],
-                "Limitación diaria": row["daily_limitation"],
-                "Medicación relacionada": row["medication_related"],
-                "Medicamento informado": row["medication_name"],
-                "Objetivos principales seleccionados": expectations,
-            }
-        )
+        evaluations.append({
+            "Evaluación ID": f"EVAL-{row['id']:06d}",
+            "Fecha/hora": row["completed_at"],
+            "Nombre": row["name"],
+            "DNI": "registrado" if row["has_dni"] else "no registrado",
+            "Contacto": "registrado" if row["has_contact"] else "no registrado",
+            "Tipo de consulta": row["consultation_type"] or "Paciente nuevo",
+            "Motivo principal": row["main_reason"],
+            "Problema o síntoma principal": row["main_problem"],
+            "Tiempo de evolución": row["duration"],
+            "Impacto actual": row["current_impact"],
+            "Estado general últimos 7 días": row["global_functional_score"],
+            "Limitación diaria": row["daily_limitation"],
+            "Medicación relacionada": row["medication_related"],
+            "Medicamento informado": row["medication_name"],
+            "Objetivos principales seleccionados": expectations,
+        })
     return evaluations
 
 
@@ -1085,20 +620,12 @@ def store_completed_guided_evaluation() -> None:
     """Persist one completed patient-flow evaluation for the panel."""
     if st.session_state.get("guided_evaluation_recorded"):
         return
-
     personal_data = st.session_state.get("guided_personal_data", {})
     problem_details = st.session_state.get("guided_problem_details", {})
-    follow_up_orientation = st.session_state.get(
-        "guided_follow_up_orientation",
-        {},
-    )
-    treatment_expectations = st.session_state.get(
-        "guided_treatment_expectations",
-        {},
-    )
+    follow_up_orientation = st.session_state.get("guided_follow_up_orientation", {})
+    treatment_expectations = st.session_state.get("guided_treatment_expectations", {})
     medication_value = follow_up_orientation.get("medication_related")
-    medication_options = {"No", "Sí", "No estoy seguro/a"}
-    if medication_value in medication_options:
+    if medication_value in {"No", "Sí", "No estoy seguro/a"}:
         medication_related = medication_value
         medication_name = None
     elif medication_value:
@@ -1107,7 +634,6 @@ def store_completed_guided_evaluation() -> None:
     else:
         medication_related = "Sin completar"
         medication_name = None
-
     ensure_guided_evaluations_table()
     with sqlite3.connect(database_module.DB_PATH) as connection:
         connection.execute(
@@ -1136,10 +662,7 @@ def store_completed_guided_evaluation() -> None:
                 follow_up_orientation.get("daily_limitation", "Sin completar"),
                 medication_related,
                 medication_name,
-                json.dumps(
-                    treatment_expectations.get("expectations", []),
-                    ensure_ascii=False,
-                ),
+                json.dumps(treatment_expectations.get("expectations", []), ensure_ascii=False),
             ),
         )
     st.session_state["guided_evaluation_recorded"] = True
@@ -1158,9 +681,7 @@ def ensure_patient_followups_table() -> None:
                 completed_at TEXT NOT NULL,
                 consultation_type TEXT NOT NULL DEFAULT 'Seguimiento de tratamiento',
                 comparison TEXT NOT NULL,
-                symptom_intensity REAL NOT NULL CHECK (
-                    symptom_intensity BETWEEN 0 AND 10
-                ),
+                symptom_intensity REAL NOT NULL CHECK (symptom_intensity BETWEEN 0 AND 10),
                 global_score REAL NOT NULL CHECK (global_score BETWEEN 0 AND 10),
                 medication_change TEXT NOT NULL,
                 post_session_discomfort TEXT NOT NULL,
@@ -1168,18 +689,10 @@ def ensure_patient_followups_table() -> None:
             )
             """
         )
-        existing_columns = {
-            row[1]
-            for row in connection.execute(
-                "PRAGMA table_info(patient_followups)"
-            ).fetchall()
-        }
+        existing_columns = {row[1] for row in connection.execute("PRAGMA table_info(patient_followups)").fetchall()}
         if "consultation_type" not in existing_columns:
-            connection.execute(
-                """ALTER TABLE patient_followups
-                ADD COLUMN consultation_type TEXT NOT NULL
-                DEFAULT 'Seguimiento de tratamiento'"""
-            )
+            connection.execute("""ALTER TABLE patient_followups ADD COLUMN consultation_type TEXT NOT NULL DEFAULT 'Seguimiento de tratamiento'""")
+
 
 def _search_text_matches(query: str, *values: object) -> bool:
     """Match names normally and identifiers ignoring phone punctuation."""
@@ -1189,9 +702,7 @@ def _search_text_matches(query: str, *values: object) -> bool:
         normalized_value = str(value or "").strip().casefold()
         if normalized_query and normalized_query in normalized_value:
             return True
-        value_digits = "".join(
-            character for character in normalized_value if character.isdigit()
-        )
+        value_digits = "".join(character for character in normalized_value if character.isdigit())
         if query_digits and query_digits in value_digits:
             return True
     return False
@@ -1202,47 +713,20 @@ def search_followup_patients(query: str) -> list[dict]:
     ensure_guided_evaluations_table()
     with sqlite3.connect(database_module.DB_PATH) as connection:
         connection.row_factory = sqlite3.Row
-        clinical_rows = connection.execute(
-            "SELECT id, name, dni, phone, patient_code FROM patients"
-        ).fetchall()
-        guided_rows = connection.execute(
-            "SELECT id, name, dni, phone FROM guided_evaluations"
-        ).fetchall()
-
+        clinical_rows = connection.execute("SELECT id, name, dni, phone, patient_code FROM patients").fetchall()
+        guided_rows = connection.execute("SELECT id, name, dni, phone FROM guided_evaluations").fetchall()
     matches = []
     for row in clinical_rows:
         if _search_text_matches(query, row["name"], row["dni"], row["phone"]):
             code = row["patient_code"] or f"P-{row['id']:04d}"
-            matches.append(
-                {
-                    "source": "clinical",
-                    "ref": int(row["id"]),
-                    "name": row["name"],
-                    "label": f"{row['name']} · {code}",
-                }
-            )
+            matches.append({"source": "clinical", "ref": int(row["id"]), "name": row["name"], "label": f"{row['name']} · {code}"})
     for row in guided_rows:
         if _search_text_matches(query, row["name"], row["dni"], row["phone"]):
-            matches.append(
-                {
-                    "source": "guided",
-                    "ref": int(row["id"]),
-                    "name": row["name"],
-                    "label": f"{row['name']} · EVAL-{row['id']:06d}",
-                }
-            )
+            matches.append({"source": "guided", "ref": int(row["id"]), "name": row["name"], "label": f"{row['name']} · EVAL-{row['id']:06d}"})
     return sorted(matches, key=lambda patient: patient["label"].casefold())
 
 
-def save_patient_followup(
-    patient: dict,
-    comparison: str,
-    symptom_intensity: int,
-    global_score: int,
-    medication_change: str,
-    post_session_discomfort: str,
-    changes_text: str,
-) -> None:
+def save_patient_followup(patient: dict, comparison: str, symptom_intensity: int, global_score: int, medication_change: str, post_session_discomfort: str, changes_text: str) -> None:
     """Persist one evolution record for the selected original patient."""
     ensure_patient_followups_table()
     with sqlite3.connect(database_module.DB_PATH) as connection:
@@ -1255,22 +739,7 @@ def save_patient_followup(
                 post_session_discomfort, changes_text
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (
-                patient["source"],
-                int(patient["ref"]),
-                patient["name"],
-                datetime.now().isoformat(timespec="seconds"),
-                st.session_state.get(
-                    "tipo_consulta",
-                    "Seguimiento de tratamiento",
-                ),
-                comparison,
-                int(symptom_intensity),
-                int(global_score),
-                medication_change,
-                post_session_discomfort,
-                changes_text.strip(),
-            ),
+            (patient["source"], int(patient["ref"]), patient["name"], datetime.now().isoformat(timespec="seconds"), st.session_state.get("tipo_consulta", "Seguimiento de tratamiento"), comparison, int(symptom_intensity), int(global_score), medication_change, post_session_discomfort, changes_text.strip()),
         )
 
 
@@ -1280,21 +749,40 @@ def load_patient_followups(patient_source: str, patient_ref: int) -> pd.DataFram
     with sqlite3.connect(database_module.DB_PATH) as connection:
         return pd.read_sql_query(
             """
-            SELECT
-                completed_at AS "Fecha/hora",
-                consultation_type AS "Tipo de consulta",
-                comparison AS "Comparación con consulta anterior",
-                symptom_intensity AS "Intensidad del síntoma",
-                global_score AS "Estado general últimos 7 días",
-                medication_change AS "Cambio de medicación",
-                post_session_discomfort AS "Molestia posterior",
-                changes_text AS "Qué cambió desde la última sesión"
+            SELECT completed_at AS "Fecha/hora",
+                   comparison AS "Evolución",
+                   symptom_intensity AS "Intensidad actual",
+                   global_score AS "Estado general últimos 7 días",
+                   medication_change AS "Cambio de medicación",
+                   post_session_discomfort AS "Molestias posteriores",
+                   changes_text AS "Comentario"
             FROM patient_followups
             WHERE patient_source = ? AND patient_ref = ?
             ORDER BY completed_at ASC, id ASC
             """,
             connection,
             params=(patient_source, int(patient_ref)),
+        )
+
+
+def load_registered_followups() -> pd.DataFrame:
+    """Load all recorded follow-ups for the professional table."""
+    ensure_patient_followups_table()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        return pd.read_sql_query(
+            """
+            SELECT completed_at AS "Fecha/hora",
+                   patient_name_snapshot AS "Paciente",
+                   comparison AS "Evolución",
+                   symptom_intensity AS "Intensidad actual",
+                   global_score AS "Estado general últimos 7 días",
+                   medication_change AS "Cambio de medicación",
+                   post_session_discomfort AS "Molestias posteriores",
+                   changes_text AS "Comentario"
+            FROM patient_followups
+            ORDER BY completed_at DESC, id DESC
+            """,
+            connection,
         )
 
 
@@ -1305,8 +793,7 @@ def list_patients_with_followups() -> list[dict]:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
             """
-            SELECT patient_source, patient_ref, patient_name_snapshot,
-                   COUNT(*) AS followup_count
+            SELECT patient_source, patient_ref, patient_name_snapshot, COUNT(*) AS followup_count
             FROM patient_followups
             GROUP BY patient_source, patient_ref, patient_name_snapshot
             ORDER BY patient_name_snapshot COLLATE NOCASE
@@ -1315,18 +802,7 @@ def list_patients_with_followups() -> list[dict]:
     patients = []
     for row in rows:
         source_prefix = "P" if row["patient_source"] == "clinical" else "E"
-        patients.append(
-            {
-                "source": row["patient_source"],
-                "ref": int(row["patient_ref"]),
-                "name": row["patient_name_snapshot"],
-                "label": (
-                    f"{row['patient_name_snapshot']} · "
-                    f"SEG-{source_prefix}{row['patient_ref']:04d}"
-                ),
-                "count": int(row["followup_count"]),
-            }
-        )
+        patients.append({"source": row["patient_source"], "ref": int(row["patient_ref"]), "name": row["patient_name_snapshot"], "label": f"{row['patient_name_snapshot']} · SEG-{source_prefix}{row['patient_ref']:04d}", "count": int(row["followup_count"])})
     return patients
 
 
@@ -1334,52 +810,31 @@ def render_followup_search_step() -> None:
     """Find an existing patient without exposing identifiers in results."""
     hide_sidebar()
     st.title("Seguimiento de evolución")
-    st.write("Complete esta breve evaluación antes de su nueva sesión.")
-
-    search_query = st.text_input(
-        "Buscar paciente por DNI, teléfono o nombre",
-        key="followup_search_query",
-    )
+    st.write("Complete esta breve evaluación para informar cómo evolucionó desde la última consulta.")
+    search_query = st.text_input("Buscar paciente por DNI, nombre o teléfono/contacto", key="followup_search_query")
     if st.button("Buscar paciente", type="primary", use_container_width=True):
         if not search_query.strip():
-            st.error("Ingrese DNI, teléfono o nombre para buscar.")
+            st.error("Ingrese DNI, nombre o teléfono/contacto para buscar.")
         else:
             try:
-                st.session_state["followup_search_results"] = (
-                    search_followup_patients(search_query)
-                )
+                st.session_state["followup_search_results"] = search_followup_patients(search_query)
             except sqlite3.Error as error:
                 st.error(f"No se pudo realizar la búsqueda: {error}")
-
     results = st.session_state.get("followup_search_results")
     selected_label = None
     if results is not None:
         if not results:
-            st.warning(
-                "No encontramos el paciente. Verifique los datos o complete "
-                "la evaluación inicial."
-            )
+            st.warning("No encontramos el paciente. Verifique los datos o complete la evaluación inicial.")
         else:
-            selected_label = st.selectbox(
-                "Seleccione paciente",
-                [patient["label"] for patient in results],
-                key="followup_selected_label",
-            )
-
+            selected_label = st.selectbox("Seleccione paciente", [patient["label"] for patient in results], key="followup_selected_label")
     back_column, continue_column = st.columns(2)
     with back_column:
         if st.button("Atrás", use_container_width=True):
             st.session_state["guided_step"] = "welcome"
             st.rerun()
     with continue_column:
-        if results and st.button(
-            "Continuar",
-            type="primary",
-            use_container_width=True,
-        ):
-            selected_patient = next(
-                patient for patient in results if patient["label"] == selected_label
-            )
+        if results and st.button("Continuar", type="primary", use_container_width=True):
+            selected_patient = next(patient for patient in results if patient["label"] == selected_label)
             st.session_state["followup_patient"] = selected_patient
             st.session_state["guided_step"] = "followup_form"
             st.rerun()
@@ -1392,63 +847,21 @@ def render_followup_form_step() -> None:
     if not patient:
         st.session_state["guided_step"] = "followup_search"
         st.rerun()
-
     st.title("Seguimiento de evolución")
     st.caption(f"Paciente seleccionado: {patient['name']}")
     with st.form("patient_followup_form"):
-        comparison = st.radio(
-            "¿Cómo se siente hoy comparado con la consulta anterior?",
-            ["Mejor", "Igual", "Peor"],
-            index=None,
-        )
-        symptom_intensity = st.slider(
-            "Intensidad actual del síntoma principal",
-            min_value=0,
-            max_value=10,
-            value=0,
-        )
+        comparison = st.radio("¿Cómo se siente comparado con la última consulta?", ["Mucho mejor", "Algo mejor", "Igual", "Peor"], index=None)
+        symptom_intensity = st.slider("Intensidad actual del problema principal", min_value=0, max_value=10, value=0)
         st.caption("0 = nada · 10 = máximo")
-        global_score = st.slider(
-            "Estado general últimos 7 días",
-            min_value=0,
-            max_value=10,
-            value=5,
-        )
+        global_score = st.slider("Estado general últimos 7 días", min_value=0, max_value=10, value=5)
         st.caption("0 = muy mal · 5 = regular · 10 = muy bien")
-        medication_change = st.radio(
-            "¿Cambió la medicación desde la última sesión?",
-            [
-                "No",
-                "Sí, disminuyó",
-                "Sí, aumentó",
-                "Suspendió medicación",
-                "No sabe",
-            ],
-            index=None,
-        )
-        post_session_discomfort = st.radio(
-            "¿Tuvo alguna molestia luego de la sesión anterior?",
-            ["No", "Sí, leve", "Sí, moderada", "Sí, intensa"],
-            index=None,
-        )
-        changes_text = st.text_area(
-            "¿Qué cambió desde la última sesión?",
-            max_chars=1200,
-        )
-        st.caption(
-            "También puede usar el micrófono del teclado de su celular para "
-            "dictar la respuesta."
-        )
+        medication_change = st.radio("¿Cambió la medicación?", ["No", "Disminuyó", "Aumentó", "Suspendió", "No sabe"], index=None)
+        post_session_discomfort = st.radio("¿Tuvo alguna molestia luego de la sesión anterior?", ["No", "Sí, leve", "Sí, moderada", "Sí, intensa"], index=None)
+        changes_text = st.text_area("Comentario libre", max_chars=1200)
+        st.caption("Puede escribir o dictar desde el micrófono del celular.")
         back_column, save_column = st.columns(2)
-        back_pressed = back_column.form_submit_button(
-            "Atrás", use_container_width=True
-        )
-        save_pressed = save_column.form_submit_button(
-            "Guardar seguimiento",
-            type="primary",
-            use_container_width=True,
-        )
-
+        back_pressed = back_column.form_submit_button("Atrás", use_container_width=True)
+        save_pressed = save_column.form_submit_button("Guardar seguimiento", type="primary", use_container_width=True)
     if back_pressed:
         st.session_state["guided_step"] = "followup_search"
         st.rerun()
@@ -1457,22 +870,12 @@ def render_followup_form_step() -> None:
             st.error("Complete todas las opciones antes de guardar.")
             return
         try:
-            save_patient_followup(
-                patient,
-                comparison,
-                symptom_intensity,
-                global_score,
-                medication_change,
-                post_session_discomfort,
-                changes_text,
-            )
+            save_patient_followup(patient, comparison, symptom_intensity, global_score, medication_change, post_session_discomfort, changes_text)
         except sqlite3.Error as error:
             st.error(f"No se pudo guardar el seguimiento: {error}")
             return
         st.session_state["guided_step"] = "followup_complete"
         st.rerun()
-
-
 def clear_followup_flow() -> None:
     """Clear temporary follow-up navigation data."""
     for key in (
@@ -1488,10 +891,7 @@ def clear_followup_flow() -> None:
 def render_followup_complete_step() -> None:
     """Confirm that the evolution record was stored."""
     hide_sidebar()
-    st.success(
-        "Seguimiento registrado correctamente.\n\n"
-        "El Dr. Mauricio Uehara podrá revisar su evolución antes de la consulta."
-    )
+    st.success("Seguimiento registrado correctamente.")
     if st.button("Volver al inicio", type="primary", use_container_width=True):
         clear_followup_flow()
         st.session_state["guided_step"] = "welcome"
@@ -2361,17 +1761,43 @@ def count_values_table(
 
 
 def render_patient_followup_panel_section() -> None:
-    """Show pseudonymized evolution tables and charts for one patient."""
-    st.subheader("Evolución por paciente")
+    """Show recorded follow-ups and patient evolution charts."""
+    st.subheader("Seguimientos registrados")
     try:
+        registered_followups = load_registered_followups()
         patients = list_patients_with_followups()
     except sqlite3.Error as error:
         st.error(f"No se pudieron recuperar los seguimientos: {error}")
         return
-    if not patients:
+
+    if registered_followups.empty:
         st.info("Todavía no hay seguimientos registrados.")
         return
 
+    table_data = registered_followups.copy()
+    table_data["Fecha/hora"] = pd.to_datetime(
+        table_data["Fecha/hora"], errors="coerce"
+    ).dt.strftime("%d/%m/%Y %H:%M")
+    followup_columns = [
+        "Fecha/hora",
+        "Paciente",
+        "Evolución",
+        "Intensidad actual",
+        "Estado general últimos 7 días",
+        "Cambio de medicación",
+        "Molestias posteriores",
+        "Comentario",
+    ]
+    st.dataframe(
+        table_data[followup_columns],
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    if not patients:
+        return
+
+    st.subheader("Evolución por paciente")
     labels = [patient["label"] for patient in patients]
     selected_label = st.selectbox(
         "Seleccionar paciente",
@@ -2384,12 +1810,6 @@ def render_patient_followup_panel_section() -> None:
         st.info("El paciente seleccionado no tiene seguimientos registrados.")
         return
 
-    table_data = followups.copy()
-    table_data["Fecha/hora"] = pd.to_datetime(
-        table_data["Fecha/hora"], errors="coerce"
-    ).dt.strftime("%d/%m/%Y %H:%M")
-    st.dataframe(table_data, hide_index=True, use_container_width=True)
-
     chart_data = followups.copy()
     chart_data["Fecha"] = pd.to_datetime(
         chart_data["Fecha/hora"], errors="coerce"
@@ -2397,7 +1817,7 @@ def render_patient_followup_panel_section() -> None:
     intensity_figure = px.line(
         chart_data,
         x="Fecha",
-        y="Intensidad del síntoma",
+        y="Intensidad actual",
         markers=True,
         title="Intensidad del síntoma por fecha",
     )
