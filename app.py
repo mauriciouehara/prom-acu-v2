@@ -668,31 +668,6 @@ def store_completed_guided_evaluation() -> None:
     st.session_state["guided_evaluation_recorded"] = True
 
 
-def ensure_patient_followups_table() -> None:
-    """Create persistent follow-up storage associated with original patients."""
-    with sqlite3.connect(database_module.DB_PATH) as connection:
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS patient_followups (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                patient_source TEXT NOT NULL,
-                patient_ref INTEGER NOT NULL,
-                patient_name_snapshot TEXT NOT NULL,
-                completed_at TEXT NOT NULL,
-                consultation_type TEXT NOT NULL DEFAULT 'Seguimiento de tratamiento',
-                comparison TEXT NOT NULL,
-                symptom_intensity REAL NOT NULL CHECK (symptom_intensity BETWEEN 0 AND 10),
-                global_score REAL NOT NULL CHECK (global_score BETWEEN 0 AND 10),
-                medication_change TEXT NOT NULL,
-                post_session_discomfort TEXT NOT NULL,
-                changes_text TEXT
-            )
-            """
-        )
-        existing_columns = {row[1] for row in connection.execute("PRAGMA table_info(patient_followups)").fetchall()}
-        if "consultation_type" not in existing_columns:
-            connection.execute("""ALTER TABLE patient_followups ADD COLUMN consultation_type TEXT NOT NULL DEFAULT 'Seguimiento de tratamiento'""")
-
 
 def _search_text_matches(query: str, *values: object) -> bool:
     """Match names normally and identifiers ignoring phone punctuation."""
@@ -709,159 +684,203 @@ def _search_text_matches(query: str, *values: object) -> bool:
 
 
 def search_followup_patients(query: str) -> list[dict]:
-    """Find patients from either clinical registration or guided intake."""
-    ensure_guided_evaluations_table()
-    with sqlite3.connect(database_module.DB_PATH) as connection:
-        connection.row_factory = sqlite3.Row
-        clinical_rows = connection.execute("SELECT id, name, dni, phone, patient_code FROM patients").fetchall()
-        guided_rows = connection.execute("SELECT id, name, dni, phone FROM guided_evaluations").fetchall()
+    """Find registered patients using the existing patients table."""
+    patients = get_patients()
+    if patients.empty:
+        return []
+
     matches = []
-    for row in clinical_rows:
-        if _search_text_matches(query, row["name"], row["dni"], row["phone"]):
-            code = row["patient_code"] or f"P-{row['id']:04d}"
-            matches.append({"source": "clinical", "ref": int(row["id"]), "name": row["name"], "label": f"{row['name']} · {code}"})
-    for row in guided_rows:
-        if _search_text_matches(query, row["name"], row["dni"], row["phone"]):
-            matches.append({"source": "guided", "ref": int(row["id"]), "name": row["name"], "label": f"{row['name']} · EVAL-{row['id']:06d}"})
+    for _, row in patients.iterrows():
+        if _search_text_matches(
+            query,
+            row.get("name"),
+            row.get("dni"),
+            row.get("phone"),
+            row.get("patient_code"),
+        ):
+            patient_id = int(row["id"])
+            code = row.get("patient_code") or f"P-{patient_id:04d}"
+            matches.append(
+                {
+                    "id": patient_id,
+                    "name": row.get("name", "Sin nombre"),
+                    "label": f"{row.get('name', 'Sin nombre')} · {code}",
+                }
+            )
     return sorted(matches, key=lambda patient: patient["label"].casefold())
 
 
-def save_patient_followup(patient: dict, comparison: str, symptom_intensity: int, global_score: int, medication_change: str, post_session_discomfort: str, changes_text: str) -> None:
-    """Persist one evolution record for the selected original patient."""
-    ensure_patient_followups_table()
-    with sqlite3.connect(database_module.DB_PATH) as connection:
-        connection.execute(
-            """
-            INSERT INTO patient_followups (
-                patient_source, patient_ref, patient_name_snapshot,
-                completed_at, consultation_type, comparison,
-                symptom_intensity, global_score, medication_change,
-                post_session_discomfort, changes_text
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (patient["source"], int(patient["ref"]), patient["name"], datetime.now().isoformat(timespec="seconds"), st.session_state.get("tipo_consulta", "Seguimiento de tratamiento"), comparison, int(symptom_intensity), int(global_score), medication_change, post_session_discomfort, changes_text.strip()),
+def format_sessions_for_followup(sessions: pd.DataFrame) -> pd.DataFrame:
+    """Prepare the existing session records for patient-facing/professional views."""
+    if sessions.empty:
+        return pd.DataFrame(
+            columns=[
+                "Sesión",
+                "Fecha",
+                "Intensidad actual",
+                "Estado general últimos 7 días",
+                "Cambio de medicación",
+                "Molestias posteriores",
+                "Comentario",
+            ]
         )
 
-
-def load_patient_followups(patient_source: str, patient_ref: int) -> pd.DataFrame:
-    """Return one patient's follow-ups in chronological order."""
-    ensure_patient_followups_table()
-    with sqlite3.connect(database_module.DB_PATH) as connection:
-        return pd.read_sql_query(
-            """
-            SELECT completed_at AS "Fecha/hora",
-                   comparison AS "Evolución",
-                   symptom_intensity AS "Intensidad actual",
-                   global_score AS "Estado general últimos 7 días",
-                   medication_change AS "Cambio de medicación",
-                   post_session_discomfort AS "Molestias posteriores",
-                   changes_text AS "Comentario"
-            FROM patient_followups
-            WHERE patient_source = ? AND patient_ref = ?
-            ORDER BY completed_at ASC, id ASC
-            """,
-            connection,
-            params=(patient_source, int(patient_ref)),
-        )
-
-
-def load_registered_followups() -> pd.DataFrame:
-    """Load all recorded follow-ups for the professional table."""
-    ensure_patient_followups_table()
-    with sqlite3.connect(database_module.DB_PATH) as connection:
-        return pd.read_sql_query(
-            """
-            SELECT completed_at AS "Fecha/hora",
-                   patient_name_snapshot AS "Paciente",
-                   comparison AS "Evolución",
-                   symptom_intensity AS "Intensidad actual",
-                   global_score AS "Estado general últimos 7 días",
-                   medication_change AS "Cambio de medicación",
-                   post_session_discomfort AS "Molestias posteriores",
-                   changes_text AS "Comentario"
-            FROM patient_followups
-            ORDER BY completed_at DESC, id DESC
-            """,
-            connection,
-        )
-
-
-def list_patients_with_followups() -> list[dict]:
-    """List pseudonymized patient choices that have evolution records."""
-    ensure_patient_followups_table()
-    with sqlite3.connect(database_module.DB_PATH) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = connection.execute(
-            """
-            SELECT patient_source, patient_ref, patient_name_snapshot, COUNT(*) AS followup_count
-            FROM patient_followups
-            GROUP BY patient_source, patient_ref, patient_name_snapshot
-            ORDER BY patient_name_snapshot COLLATE NOCASE
-            """
-        ).fetchall()
-    patients = []
-    for row in rows:
-        source_prefix = "P" if row["patient_source"] == "clinical" else "E"
-        patients.append({"source": row["patient_source"], "ref": int(row["patient_ref"]), "name": row["patient_name_snapshot"], "label": f"{row['patient_name_snapshot']} · SEG-{source_prefix}{row['patient_ref']:04d}", "count": int(row["followup_count"])})
-    return patients
+    table = pd.DataFrame(
+        {
+            "Sesión": sessions["session_number"],
+            "Fecha": pd.to_datetime(sessions["date"], errors="coerce").dt.strftime(
+                "%d/%m/%Y"
+            ),
+            "Intensidad actual": sessions["eva_pre"],
+            "Estado general últimos 7 días": sessions["functional_impact"],
+            "Cambio de medicación": sessions["analgesic_change"],
+            "Molestias posteriores": sessions["adverse_event_severity"],
+            "Comentario": sessions["notes"].fillna("") if "notes" in sessions else "",
+        }
+    )
+    return table
 
 
 def render_followup_search_step() -> None:
-    """Find an existing patient without exposing identifiers in results."""
+    """Find an existing patient and show their current session history."""
     hide_sidebar()
     st.title("Seguimiento de evolución")
-    st.write("Complete esta breve evaluación para informar cómo evolucionó desde la última consulta.")
-    search_query = st.text_input("Buscar paciente por DNI, nombre o teléfono/contacto", key="followup_search_query")
+    st.write(
+        "Complete esta breve evaluación para informar cómo evolucionó desde la "
+        "última consulta."
+    )
+
+    search_query = st.text_input(
+        "Buscar paciente por DNI, nombre o teléfono/contacto",
+        key="followup_search_query",
+    )
     if st.button("Buscar paciente", type="primary", use_container_width=True):
         if not search_query.strip():
             st.error("Ingrese DNI, nombre o teléfono/contacto para buscar.")
         else:
-            try:
-                st.session_state["followup_search_results"] = search_followup_patients(search_query)
-            except sqlite3.Error as error:
-                st.error(f"No se pudo realizar la búsqueda: {error}")
+            st.session_state["followup_search_results"] = search_followup_patients(
+                search_query
+            )
+
     results = st.session_state.get("followup_search_results")
     selected_label = None
     if results is not None:
         if not results:
-            st.warning("No encontramos el paciente. Verifique los datos o complete la evaluación inicial.")
+            st.warning("No encontramos un paciente registrado con esos datos.")
         else:
-            selected_label = st.selectbox("Seleccione paciente", [patient["label"] for patient in results], key="followup_selected_label")
+            selected_label = st.selectbox(
+                "Seleccione paciente",
+                [patient["label"] for patient in results],
+                key="followup_selected_label",
+            )
+            selected_patient = next(
+                patient for patient in results if patient["label"] == selected_label
+            )
+            sessions = get_patient_sessions(selected_patient["id"])
+            st.markdown("**Sesiones registradas actuales**")
+            if sessions.empty:
+                st.info("Este paciente todavía no tiene sesiones registradas.")
+            else:
+                st.dataframe(
+                    format_sessions_for_followup(sessions),
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
     back_column, continue_column = st.columns(2)
     with back_column:
         if st.button("Atrás", use_container_width=True):
             st.session_state["guided_step"] = "welcome"
             st.rerun()
     with continue_column:
-        if results and st.button("Continuar", type="primary", use_container_width=True):
-            selected_patient = next(patient for patient in results if patient["label"] == selected_label)
+        if results and st.button(
+            "Registrar nuevo seguimiento",
+            type="primary",
+            use_container_width=True,
+        ):
+            selected_patient = next(
+                patient for patient in results if patient["label"] == selected_label
+            )
             st.session_state["followup_patient"] = selected_patient
             st.session_state["guided_step"] = "followup_form"
             st.rerun()
 
 
 def render_followup_form_step() -> None:
-    """Collect the evolution questions independently from initial intake."""
+    """Register the brief evolution as a new existing session."""
     hide_sidebar()
     patient = st.session_state.get("followup_patient")
     if not patient:
         st.session_state["guided_step"] = "followup_search"
         st.rerun()
+
+    patient_id = int(patient["id"])
+    sessions = get_patient_sessions(patient_id)
+    next_session_number = (
+        int(sessions["session_number"].max()) + 1 if not sessions.empty else 1
+    )
+
     st.title("Seguimiento de evolución")
     st.caption(f"Paciente seleccionado: {patient['name']}")
-    with st.form("patient_followup_form"):
-        comparison = st.radio("¿Cómo se siente comparado con la última consulta?", ["Mucho mejor", "Algo mejor", "Igual", "Peor"], index=None)
-        symptom_intensity = st.slider("Intensidad actual del problema principal", min_value=0, max_value=10, value=0)
-        st.caption("0 = nada · 10 = máximo")
-        global_score = st.slider("Estado general últimos 7 días", min_value=0, max_value=10, value=5)
-        st.caption("0 = muy mal · 5 = regular · 10 = muy bien")
-        medication_change = st.radio("¿Cambió la medicación?", ["No", "Disminuyó", "Aumentó", "Suspendió", "No sabe"], index=None)
-        post_session_discomfort = st.radio("¿Tuvo alguna molestia luego de la sesión anterior?", ["No", "Sí, leve", "Sí, moderada", "Sí, intensa"], index=None)
-        changes_text = st.text_area("Comentario libre", max_chars=1200)
+    st.markdown("**Historial de sesiones**")
+    if sessions.empty:
+        st.info("Este paciente todavía no tiene sesiones registradas.")
+    else:
+        st.dataframe(
+            format_sessions_for_followup(sessions),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    with st.form("patient_followup_session_form"):
+        st.write(f"**Nueva sesión:** {next_session_number}")
+        session_date = st.date_input(
+            "Fecha",
+            value=date.today(),
+            max_value=date.today(),
+        )
+        comparison = st.radio(
+            "¿Cómo se siente comparado con la última consulta?",
+            ["Mucho mejor", "Algo mejor", "Igual", "Peor"],
+            index=None,
+        )
+        symptom_intensity = st.slider(
+            "Intensidad actual del problema principal",
+            min_value=0.0,
+            max_value=10.0,
+            value=0.0,
+            step=0.5,
+        )
+        global_score = st.slider(
+            "Estado general últimos 7 días",
+            min_value=0.0,
+            max_value=10.0,
+            value=5.0,
+            step=0.5,
+        )
+        medication_change = st.radio(
+            "¿Cambió la medicación?",
+            ["No", "Disminuyó", "Aumentó", "Suspendió", "No sabe"],
+            index=None,
+        )
+        post_session_discomfort = st.radio(
+            "¿Tuvo alguna molestia luego de la sesión anterior?",
+            ["No", "Sí, leve", "Sí, moderada", "Sí, intensa"],
+            index=None,
+        )
+        free_comment = st.text_area("Comentario libre", max_chars=1200)
         st.caption("Puede escribir o dictar desde el micrófono del celular.")
+
         back_column, save_column = st.columns(2)
-        back_pressed = back_column.form_submit_button("Atrás", use_container_width=True)
-        save_pressed = save_column.form_submit_button("Guardar seguimiento", type="primary", use_container_width=True)
+        back_pressed = back_column.form_submit_button(
+            "Atrás", use_container_width=True
+        )
+        save_pressed = save_column.form_submit_button(
+            "Guardar seguimiento",
+            type="primary",
+            use_container_width=True,
+        )
+
     if back_pressed:
         st.session_state["guided_step"] = "followup_search"
         st.rerun()
@@ -869,13 +888,54 @@ def render_followup_form_step() -> None:
         if not comparison or not medication_change or not post_session_discomfort:
             st.error("Complete todas las opciones antes de guardar.")
             return
+        if session_number_exists(patient_id, next_session_number):
+            st.error("Ese número de sesión ya existe para el paciente.")
+            return
+
+        adverse_event_severity = {
+            "No": "Ninguno",
+            "Sí, leve": "Leve",
+            "Sí, moderada": "Moderado",
+            "Sí, intensa": "Severo",
+        }[post_session_discomfort]
+        adverse_description = (
+            post_session_discomfort if post_session_discomfort != "No" else ""
+        )
+        notes = (
+            f"Evolución comparada con la última consulta: {comparison}\n"
+            f"Cambio de medicación: {medication_change}\n"
+            f"Molestias posteriores: {post_session_discomfort}\n"
+            f"Comentario libre: {free_comment.strip() or 'Sin comentario'}"
+        )
+        pgic_map = {
+            "Mucho mejor": 1,
+            "Algo mejor": 2,
+            "Igual": 4,
+            "Peor": 6,
+        }
+
         try:
-            save_patient_followup(patient, comparison, symptom_intensity, global_score, medication_change, post_session_discomfort, changes_text)
+            add_session(
+                patient_id=patient_id,
+                session_number=next_session_number,
+                date=session_date.isoformat(),
+                eva_pre=float(symptom_intensity),
+                eva_post=float(symptom_intensity),
+                pgic=pgic_map[comparison],
+                functional_impact=float(global_score),
+                medication_name="",
+                medication_frequency="",
+                analgesic_change=medication_change,
+                adverse_event_severity=adverse_event_severity,
+                adverse_event_description=adverse_description,
+                notes=notes,
+            )
         except sqlite3.Error as error:
             st.error(f"No se pudo guardar el seguimiento: {error}")
             return
         st.session_state["guided_step"] = "followup_complete"
         st.rerun()
+
 def clear_followup_flow() -> None:
     """Clear temporary follow-up navigation data."""
     for key in (
@@ -1761,75 +1821,50 @@ def count_values_table(
 
 
 def render_patient_followup_panel_section() -> None:
-    """Show recorded follow-ups and patient evolution charts."""
-    st.subheader("Seguimientos registrados")
-    try:
-        registered_followups = load_registered_followups()
-        patients = list_patients_with_followups()
-    except sqlite3.Error as error:
-        st.error(f"No se pudieron recuperar los seguimientos: {error}")
+    """Show session history and evolution charts using existing session data."""
+    st.subheader("Historial por paciente")
+    patients = get_patients()
+    if patients.empty:
+        st.info("Todavía no hay pacientes registrados.")
         return
 
-    if registered_followups.empty:
-        st.info("Todavía no hay seguimientos registrados.")
-        return
-
-    table_data = registered_followups.copy()
-    table_data["Fecha/hora"] = pd.to_datetime(
-        table_data["Fecha/hora"], errors="coerce"
-    ).dt.strftime("%d/%m/%Y %H:%M")
-    followup_columns = [
-        "Fecha/hora",
-        "Paciente",
-        "Evolución",
-        "Intensidad actual",
-        "Estado general últimos 7 días",
-        "Cambio de medicación",
-        "Molestias posteriores",
-        "Comentario",
-    ]
-    st.dataframe(
-        table_data[followup_columns],
-        hide_index=True,
-        use_container_width=True,
-    )
-
-    if not patients:
-        return
-
-    st.subheader("Evolución por paciente")
-    labels = [patient["label"] for patient in patients]
+    options = patient_options(patients)
     selected_label = st.selectbox(
         "Seleccionar paciente",
-        labels,
-        key="professional_followup_patient",
+        list(options.keys()),
+        key="professional_session_history_patient",
     )
-    patient = next(item for item in patients if item["label"] == selected_label)
-    followups = load_patient_followups(patient["source"], patient["ref"])
-    if followups.empty:
-        st.info("El paciente seleccionado no tiene seguimientos registrados.")
+    patient_id = options[selected_label]
+    sessions = get_patient_sessions(patient_id)
+    if sessions.empty:
+        st.info("El paciente seleccionado todavía no tiene sesiones registradas.")
         return
 
-    chart_data = followups.copy()
-    chart_data["Fecha"] = pd.to_datetime(
-        chart_data["Fecha/hora"], errors="coerce"
-    )
+    table_data = format_sessions_for_followup(sessions)
+    st.dataframe(table_data, hide_index=True, use_container_width=True)
+
+    chart_data = sessions.copy().sort_values("session_number")
     intensity_figure = px.line(
         chart_data,
-        x="Fecha",
-        y="Intensidad actual",
+        x="session_number",
+        y="eva_pre",
         markers=True,
-        title="Intensidad del síntoma por fecha",
+        title="Intensidad por sesión",
+        labels={"session_number": "Sesión", "eva_pre": "Intensidad actual"},
     )
     intensity_figure.update_yaxes(range=[0, 10], dtick=1)
     st.plotly_chart(intensity_figure, use_container_width=True)
 
     global_figure = px.line(
         chart_data,
-        x="Fecha",
-        y="Estado general últimos 7 días",
+        x="session_number",
+        y="functional_impact",
         markers=True,
-        title="Estado general por fecha",
+        title="Estado general por sesión",
+        labels={
+            "session_number": "Sesión",
+            "functional_impact": "Estado general últimos 7 días",
+        },
     )
     global_figure.update_yaxes(range=[0, 10], dtick=1)
     st.plotly_chart(global_figure, use_container_width=True)
