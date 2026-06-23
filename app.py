@@ -1,4 +1,4 @@
-"""PROM-ACU: simple clinical follow-up demo built with Streamlit."""
+﻿"""PROM-ACU: simple clinical follow-up demo built with Streamlit."""
 
 from __future__ import annotations
 
@@ -53,14 +53,14 @@ get_womac_dashboard_assessments = (
 
 st.set_page_config(
     page_title="PROM-ACU",
-    page_icon="🩺",
+    page_icon="ðŸ©º",
     layout="wide",
 )
 
 
 def show_medical_warning() -> None:
     """Display the mandatory medical disclaimer."""
-    st.warning(MEDICAL_WARNING, icon="⚠️")
+    st.warning(MEDICAL_WARNING, icon="âš ï¸")
 
 
 def hide_sidebar() -> None:
@@ -102,10 +102,10 @@ def render_welcome_step() -> None:
         """,
         unsafe_allow_html=True,
     )
-    st.title("¡Bienvenida/o!")
-    st.subheader("ACUPUNTURA NEUROBIOENERGÉTICA")
+    st.title("Â¡Bienvenida/o!")
+    st.subheader("ACUPUNTURA NEUROBIOENERGÃ‰TICA")
     st.write("Dr. Mauricio Uehara")
-    st.write("¿Qué tipo de consulta desea realizar?")
+    st.write("Â¿QuÃ© tipo de consulta desea realizar?")
 
     with st.container(border=True):
         if st.button(
@@ -132,8 +132,8 @@ def render_welcome_step() -> None:
             st.session_state["guided_step"] = "followup_search"
             st.rerun()
         st.markdown(
-            '<p class="welcome-card-help">Ya comenzó sus sesiones y desea '
-            "informar cómo evolucionó desde la última consulta.</p>",
+            '<p class="welcome-card-help">Ya comenzÃ³ sus sesiones y desea '
+            "informar cÃ³mo evolucionÃ³ desde la Ãºltima consulta.</p>",
             unsafe_allow_html=True,
         )
 
@@ -150,7 +150,7 @@ def render_welcome_step() -> None:
             st.rerun()
         st.markdown(
             '<p class="welcome-card-help">Fue atendido anteriormente y ahora '
-            "desea consultar nuevamente, por recaída o por otra dolencia.</p>",
+            "desea consultar nuevamente, por recaÃ­da o por otra dolencia.</p>",
             unsafe_allow_html=True,
         )
 
@@ -161,7 +161,7 @@ def render_welcome_step() -> None:
 
 def render_back_button(previous_step: str) -> None:
     """Allow patients to return to the previous guided step without clearing data."""
-    if st.button("Volver atrás", use_container_width=True):
+    if st.button("Volver atrÃ¡s", use_container_width=True):
         st.session_state["guided_step"] = previous_step
         st.rerun()
 
@@ -184,7 +184,7 @@ def render_patient_navigation(
     """Render bottom navigation for patient guided-flow screens."""
     back_col, next_col = st.columns(2)
     with back_col:
-        if st.button("Atrás", use_container_width=True):
+        if st.button("AtrÃ¡s", use_container_width=True):
             if on_back is not None:
                 on_back()
             st.session_state["guided_step"] = previous_step
@@ -200,7 +200,7 @@ def render_patient_navigation(
 
 def show_dictation_help() -> None:
     """Show a short mobile dictation hint below long text fields."""
-    st.caption("Puede escribir o dictar desde el micrófono del celular.")
+    st.caption("Puede escribir o dictar desde el micrÃ³fono del celular.")
 
 
 def render_informed_consent_step() -> None:
@@ -208,22 +208,22 @@ def render_informed_consent_step() -> None:
     hide_sidebar()
     st.title("Consentimiento informado")
     st.write(
-        "Esta aplicación permite registrar información previa o complementaria "
-        "a la consulta médica.\n\n"
-        "Los datos serán utilizados por el Dr. Mauricio Uehara para orientar "
-        "el seguimiento clínico.\n\n"
-        "La aplicación puede utilizar asistencia por inteligencia artificial "
-        "para organizar la información ingresada, pero no reemplaza la "
-        "evaluación médica presencial, no emite diagnósticos automáticos y "
-        "no indica tratamientos por sí sola.\n\n"
-        "Los datos personales serán tratados de manera confidencial. Para "
-        "análisis, informes o exportaciones, la información clínica deberá "
+        "Esta aplicaciÃ³n permite registrar informaciÃ³n previa o complementaria "
+        "a la consulta mÃ©dica.\n\n"
+        "Los datos serÃ¡n utilizados por el Dr. Mauricio Uehara para orientar "
+        "el seguimiento clÃ­nico.\n\n"
+        "La aplicaciÃ³n puede utilizar asistencia por inteligencia artificial "
+        "para organizar la informaciÃ³n ingresada, pero no reemplaza la "
+        "evaluaciÃ³n mÃ©dica presencial, no emite diagnÃ³sticos automÃ¡ticos y "
+        "no indica tratamientos por sÃ­ sola.\n\n"
+        "Los datos personales serÃ¡n tratados de manera confidencial. Para "
+        "anÃ¡lisis, informes o exportaciones, la informaciÃ³n clÃ­nica deberÃ¡ "
         "utilizarse en forma seudonimizada o anonimizada, evitando identificar "
         "directamente al paciente."
     )
     accepted_consent = st.checkbox(
         "Acepto el uso confidencial de mis datos y comprendo que esta "
-        "herramienta no reemplaza la consulta médica.",
+        "herramienta no reemplaza la consulta mÃ©dica.",
         key="informed_consent_checkbox",
     )
     def continue_from_consent() -> bool:
@@ -243,18 +243,18 @@ def render_informed_consent_step() -> None:
 def render_initial_classification() -> None:
     """Capture the initial area of interest for the current session."""
     hide_sidebar()
-    st.title("¿Qué desea mejorar?")
+    st.title("Â¿QuÃ© desea mejorar?")
 
     selected_category = st.radio(
-        "Área de interés",
+        "Ãrea de interÃ©s",
         [
             "Dolor y movilidad",
             "Insomnio",
-            "Estrés o ansiedad",
-            "Tristeza o depresión",
-            "Respiración",
-            "Digestión",
-            "Salud urinaria, próstata o ginecológica",
+            "EstrÃ©s o ansiedad",
+            "Tristeza o depresiÃ³n",
+            "RespiraciÃ³n",
+            "DigestiÃ³n",
+            "Salud urinaria, prÃ³stata o ginecolÃ³gica",
             "Otro problema de salud",
         ],
         index=None,
@@ -272,7 +272,7 @@ def render_initial_classification() -> None:
 
     def continue_from_initial() -> bool:
         if selected_category is None:
-            st.error("Seleccione una opción para continuar.")
+            st.error("Seleccione una opciÃ³n para continuar.")
             return False
         if (
             selected_category == "Otro problema de salud"
@@ -298,7 +298,7 @@ def render_personal_data_step() -> None:
     """Collect simple personal data for the guided experience."""
     hide_sidebar()
     st.title("Datos personales")
-    st.success("Perfecto. Vamos a completar una breve evaluación.")
+    st.success("Perfecto. Vamos a completar una breve evaluaciÃ³n.")
 
     saved_personal_data = st.session_state.get("guided_personal_data", {})
     guided_name = st.text_input(
@@ -312,7 +312,7 @@ def render_personal_data_step() -> None:
         max_chars=30,
     )
     guided_phone = st.text_input(
-        "Teléfono celular / WhatsApp o contacto de familiar *",
+        "TelÃ©fono celular / WhatsApp o contacto de familiar *",
         value=saved_personal_data.get("phone", ""),
         max_chars=60,
     )
@@ -345,7 +345,7 @@ def render_personal_data_step() -> None:
                 else "Otro" if saved_sex else None
             ),
         ),
-        placeholder="Seleccione una opción",
+        placeholder="Seleccione una opciÃ³n",
     )
     guided_sex_other = ""
     if guided_sex == "Otro":
@@ -393,19 +393,19 @@ def render_personal_data_step() -> None:
 def render_problem_details_step() -> None:
     """Collect the main problem in patient-friendly language."""
     hide_sidebar()
-    st.title("Cuéntenos su problema")
+    st.title("CuÃ©ntenos su problema")
 
     selected_category = st.session_state.get("selected_initial_category", "")
     duration_options = [
         "Menos de 1 semana",
         "Menos de 1 mes",
-        "Más de 3 meses",
-        "Más de 1 año",
+        "MÃ¡s de 3 meses",
+        "MÃ¡s de 1 aÃ±o",
     ]
     saved_problem_details = st.session_state.get("guided_problem_details", {})
     category_fields = {
         "Insomnio": {
-            "label": "¿Qué problema tiene con el sueño?",
+            "label": "Â¿QuÃ© problema tiene con el sueÃ±o?",
             "options": [
                 "Me cuesta dormir",
                 "Me despierto varias veces",
@@ -413,35 +413,35 @@ def render_problem_details_step() -> None:
                 "Duermo pero no descanso",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Estrés o ansiedad": {
-            "label": "¿Qué siente principalmente?",
+        "EstrÃ©s o ansiedad": {
+            "label": "Â¿QuÃ© siente principalmente?",
             "options": [
                 "Nerviosismo",
-                "Preocupación excesiva",
-                "Palpitaciones o tensión",
+                "PreocupaciÃ³n excesiva",
+                "Palpitaciones o tensiÃ³n",
                 "Ataques de ansiedad",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Tristeza o depresión": {
-            "label": "¿Qué siente principalmente?",
+        "Tristeza o depresiÃ³n": {
+            "label": "Â¿QuÃ© siente principalmente?",
             "options": [
                 "Tristeza",
                 "Falta de ganas",
                 "Cansancio emocional",
-                "Pérdida de interés",
+                "PÃ©rdida de interÃ©s",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Respiración": {
-            "label": "¿Cuál es el problema principal?",
+        "RespiraciÃ³n": {
+            "label": "Â¿CuÃ¡l es el problema principal?",
             "options": [
                 "Falta de aire",
                 "Tos",
@@ -449,77 +449,77 @@ def render_problem_details_step() -> None:
                 "Asma",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Digestión": {
-            "label": "¿Cuál es el problema principal?",
+        "DigestiÃ³n": {
+            "label": "Â¿CuÃ¡l es el problema principal?",
             "options": [
                 "Acidez o reflujo",
-                "Distensión abdominal",
-                "Estreñimiento",
+                "DistensiÃ³n abdominal",
+                "EstreÃ±imiento",
                 "Diarrea",
-                "Náuseas",
+                "NÃ¡useas",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Salud urinaria, próstata o ginecológica": {
-            "label": "¿Cuál es el problema principal?",
+        "Salud urinaria, prÃ³stata o ginecolÃ³gica": {
+            "label": "Â¿CuÃ¡l es el problema principal?",
             "options": [
                 "Orinar frecuentemente",
                 "Ardor al orinar",
-                "Dolor pélvico",
-                "Síntomas prostáticos",
-                "Síntomas ginecológicos",
+                "Dolor pÃ©lvico",
+                "SÃ­ntomas prostÃ¡ticos",
+                "SÃ­ntomas ginecolÃ³gicos",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
     }
 
     with st.form("guided_problem_details_form"):
         if selected_category == "Otro problema de salud":
             problem = st.session_state.get("other_health_problem_description", "")
-            st.write(f"**Problema o síntoma principal:** {problem}")
+            st.write(f"**Problema o sÃ­ntoma principal:** {problem}")
         elif selected_category == "Dolor y movilidad":
             problem = st.text_input(
-                "¿Cuál es el problema que desea tratar?",
+                "Â¿CuÃ¡l es el problema que desea tratar?",
                 value=saved_problem_details.get("problem", ""),
                 placeholder=(
                     "Ejemplo: dolor lumbar, dolor de rodilla, dolor cervical."
                 ),
             )
-            slider_label = "¿Qué intensidad tiene hoy?"
-            caption = "0 = nada, 10 = máximo."
+            slider_label = "Â¿QuÃ© intensidad tiene hoy?"
+            caption = "0 = nada, 10 = mÃ¡ximo."
         else:
             field_config = category_fields.get(selected_category, {})
             problem = st.selectbox(
-                field_config.get("label", "¿Cuál es el problema principal?"),
+                field_config.get("label", "Â¿CuÃ¡l es el problema principal?"),
                 field_config.get("options", ["Otro"]),
                 index=option_index(
                     field_config.get("options", ["Otro"]),
                     saved_problem_details.get("problem"),
                 ),
-                placeholder="Seleccione una opción",
+                placeholder="Seleccione una opciÃ³n",
             )
             slider_label = field_config.get(
                 "slider_label",
-                "¿Cuánto afecta su vida diaria?",
+                "Â¿CuÃ¡nto afecta su vida diaria?",
             )
-            caption = field_config.get("caption", "0 = nada, 10 = muchísimo.")
+            caption = field_config.get("caption", "0 = nada, 10 = muchÃ­simo.")
 
         if selected_category == "Otro problema de salud":
-            slider_label = "¿Cuánto afecta su vida diaria?"
-            caption = "0 = nada, 10 = muchísimo."
+            slider_label = "Â¿CuÃ¡nto afecta su vida diaria?"
+            caption = "0 = nada, 10 = muchÃ­simo."
 
         duration = st.selectbox(
-            "¿Hace cuánto tiempo lo tiene?",
+            "Â¿Hace cuÃ¡nto tiempo lo tiene?",
             duration_options,
             index=option_index(duration_options, saved_problem_details.get("duration")),
-            placeholder="Seleccione una opción",
+            placeholder="Seleccione una opciÃ³n",
         )
         intensity = st.slider(
             slider_label,
@@ -530,7 +530,7 @@ def render_problem_details_step() -> None:
         )
         st.caption(caption)
         submitted = st.form_submit_button(
-            "Guardar información",
+            "Guardar informaciÃ³n",
             type="primary",
             use_container_width=True,
         )
@@ -538,7 +538,7 @@ def render_problem_details_step() -> None:
     if submitted:
         problem_text = problem.strip() if isinstance(problem, str) else problem
         if not problem_text or not duration:
-            st.error("Complete el problema y el tiempo de evolución.")
+            st.error("Complete el problema y el tiempo de evoluciÃ³n.")
             return
         st.session_state["guided_problem_details"] = {
             "problem": problem_text,
@@ -597,19 +597,19 @@ def load_completed_guided_evaluations() -> list[dict]:
         except (TypeError, json.JSONDecodeError):
             expectations = []
         evaluations.append({
-            "Evaluación ID": f"EVAL-{row['id']:06d}",
+            "EvaluaciÃ³n ID": f"EVAL-{row['id']:06d}",
             "Fecha/hora": row["completed_at"],
             "Nombre": row["name"],
             "DNI": "registrado" if row["has_dni"] else "no registrado",
             "Contacto": "registrado" if row["has_contact"] else "no registrado",
             "Tipo de consulta": row["consultation_type"] or "Paciente nuevo",
             "Motivo principal": row["main_reason"],
-            "Problema o síntoma principal": row["main_problem"],
-            "Tiempo de evolución": row["duration"],
+            "Problema o sÃ­ntoma principal": row["main_problem"],
+            "Tiempo de evoluciÃ³n": row["duration"],
             "Impacto actual": row["current_impact"],
-            "Estado general últimos 7 días": row["global_functional_score"],
-            "Limitación diaria": row["daily_limitation"],
-            "Medicación relacionada": row["medication_related"],
+            "Estado general Ãºltimos 7 dÃ­as": row["global_functional_score"],
+            "LimitaciÃ³n diaria": row["daily_limitation"],
+            "MedicaciÃ³n relacionada": row["medication_related"],
             "Medicamento informado": row["medication_name"],
             "Objetivos principales seleccionados": expectations,
         })
@@ -625,11 +625,11 @@ def store_completed_guided_evaluation() -> None:
     follow_up_orientation = st.session_state.get("guided_follow_up_orientation", {})
     treatment_expectations = st.session_state.get("guided_treatment_expectations", {})
     medication_value = follow_up_orientation.get("medication_related")
-    if medication_value in {"No", "Sí", "No estoy seguro/a"}:
+    if medication_value in {"No", "SÃ­", "No estoy seguro/a"}:
         medication_related = medication_value
         medication_name = None
     elif medication_value:
-        medication_related = "Sí"
+        medication_related = "SÃ­"
         medication_name = medication_value
     else:
         medication_related = "Sin completar"
@@ -684,12 +684,25 @@ def _search_text_matches(query: str, *values: object) -> bool:
 
 
 def search_followup_patients(query: str) -> list[dict]:
-    """Find registered patients using the existing patients table."""
+    """Find patients for follow-up from registered patients and guided evaluations."""
     patients = get_patients()
-    if patients.empty:
-        return []
-
     matches = []
+    matched_patient_ids: set[int] = set()
+
+    def add_match(row: pd.Series) -> None:
+        patient_id = int(row["id"])
+        if patient_id in matched_patient_ids:
+            return
+        matched_patient_ids.add(patient_id)
+        code = row.get("patient_code") or f"P-{patient_id:04d}"
+        matches.append(
+            {
+                "id": patient_id,
+                "name": row.get("name", "Sin nombre"),
+                "label": f"{row.get('name', 'Sin nombre')} - {code}",
+            }
+        )
+
     for _, row in patients.iterrows():
         if _search_text_matches(
             query,
@@ -698,15 +711,82 @@ def search_followup_patients(query: str) -> list[dict]:
             row.get("phone"),
             row.get("patient_code"),
         ):
-            patient_id = int(row["id"])
-            code = row.get("patient_code") or f"P-{patient_id:04d}"
-            matches.append(
-                {
-                    "id": patient_id,
-                    "name": row.get("name", "Sin nombre"),
-                    "label": f"{row.get('name', 'Sin nombre')} · {code}",
-                }
+            add_match(row)
+            continue
+    ensure_guided_evaluations_table()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        guided_rows = connection.execute(
+            """
+            SELECT *
+            FROM guided_evaluations
+            ORDER BY completed_at DESC, id DESC
+            """
+        ).fetchall()
+
+    for guided_row in guided_rows:
+        if _search_text_matches(
+            query,
+            guided_row["name"],
+            guided_row["dni"],
+            guided_row["phone"],
+            guided_row["email"],
+        ):
+            existing_patients = get_patients()
+            if not existing_patients.empty:
+                guided_dni = str(guided_row["dni"] or "").strip()
+                guided_name = str(guided_row["name"] or "").strip().casefold()
+                guided_phone = str(guided_row["phone"] or "").strip()
+                same_patient_mask = (
+                    existing_patients["name"]
+                    .fillna("")
+                    .astype(str)
+                    .str.strip()
+                    .str.casefold()
+                    == guided_name
+                )
+                if guided_dni:
+                    same_patient_mask = same_patient_mask | (
+                        existing_patients["dni"].fillna("").astype(str).str.strip()
+                        == guided_dni
+                    )
+                if guided_phone:
+                    same_patient_mask = same_patient_mask | (
+                        existing_patients["phone"].fillna("").astype(str).str.strip()
+                        == guided_phone
+                    )
+                same_patient = existing_patients[same_patient_mask]
+                if not same_patient.empty:
+                    add_match(same_patient.iloc[0])
+                    continue
+
+            guided_id = int(guided_row["id"])
+            patient_id = add_patient(
+                name=str(guided_row["name"] or "Sin nombre"),
+                dni=str(guided_row["dni"] or f"EVAL-{guided_id:06d}"),
+                age=0,
+                sex="Sin completar",
+                phone=str(guided_row["phone"] or guided_row["email"] or ""),
+                diagnosis=str(
+                    guided_row["main_problem"]
+                    or guided_row["main_reason"]
+                    or "Sin completar"
+                ),
+                main_complaint=str(guided_row["main_problem"] or "Sin completar"),
+                assigned_scale="EVA",
+                clinical_category=str(guided_row["main_reason"] or "Sin completar"),
+                clinical_subcategory=str(
+                    guided_row["main_problem"] or "Sin completar"
+                ),
+                suggested_prom="Pendiente de clasificacion",
+                care_origin="Pendiente de clasificacion",
             )
+            refreshed_patients = get_patients()
+            created_patient = refreshed_patients.loc[
+                refreshed_patients["id"] == patient_id
+            ].iloc[0]
+            add_match(created_patient)
+
     return sorted(matches, key=lambda patient: patient["label"].casefold())
 
 
@@ -715,11 +795,11 @@ def format_sessions_for_followup(sessions: pd.DataFrame) -> pd.DataFrame:
     if sessions.empty:
         return pd.DataFrame(
             columns=[
-                "Sesión",
+                "SesiÃ³n",
                 "Fecha",
                 "Intensidad actual",
-                "Estado general últimos 7 días",
-                "Cambio de medicación",
+                "Estado general Ãºltimos 7 dÃ­as",
+                "Cambio de medicaciÃ³n",
                 "Molestias posteriores",
                 "Comentario",
             ]
@@ -727,13 +807,13 @@ def format_sessions_for_followup(sessions: pd.DataFrame) -> pd.DataFrame:
 
     table = pd.DataFrame(
         {
-            "Sesión": sessions["session_number"],
+            "SesiÃ³n": sessions["session_number"],
             "Fecha": pd.to_datetime(sessions["date"], errors="coerce").dt.strftime(
                 "%d/%m/%Y"
             ),
             "Intensidad actual": sessions["eva_pre"],
-            "Estado general últimos 7 días": sessions["functional_impact"],
-            "Cambio de medicación": sessions["analgesic_change"],
+            "Estado general Ãºltimos 7 dÃ­as": sessions["functional_impact"],
+            "Cambio de medicaciÃ³n": sessions["analgesic_change"],
             "Molestias posteriores": sessions["adverse_event_severity"],
             "Comentario": sessions["notes"].fillna("") if "notes" in sessions else "",
         }
@@ -744,19 +824,19 @@ def format_sessions_for_followup(sessions: pd.DataFrame) -> pd.DataFrame:
 def render_followup_search_step() -> None:
     """Find an existing patient and show their current session history."""
     hide_sidebar()
-    st.title("Seguimiento de evolución")
+    st.title("Seguimiento de evoluciÃ³n")
     st.write(
-        "Complete esta breve evaluación para informar cómo evolucionó desde la "
-        "última consulta."
+        "Complete esta breve evaluaciÃ³n para informar cÃ³mo evolucionÃ³ desde la "
+        "Ãºltima consulta."
     )
 
     search_query = st.text_input(
-        "Buscar paciente por DNI, nombre o teléfono/contacto",
+        "Buscar paciente por DNI, nombre o telÃ©fono/contacto",
         key="followup_search_query",
     )
     if st.button("Buscar paciente", type="primary", use_container_width=True):
         if not search_query.strip():
-            st.error("Ingrese DNI, nombre o teléfono/contacto para buscar.")
+            st.error("Ingrese DNI, nombre o telÃ©fono/contacto para buscar.")
         else:
             st.session_state["followup_search_results"] = search_followup_patients(
                 search_query
@@ -779,7 +859,7 @@ def render_followup_search_step() -> None:
             sessions = get_patient_sessions(selected_patient["id"])
             st.markdown("**Sesiones registradas actuales**")
             if sessions.empty:
-                st.info("Este paciente todavía no tiene sesiones registradas.")
+                st.info("Este paciente todavÃ­a no tiene sesiones registradas.")
             else:
                 st.dataframe(
                     format_sessions_for_followup(sessions),
@@ -789,7 +869,7 @@ def render_followup_search_step() -> None:
 
     back_column, continue_column = st.columns(2)
     with back_column:
-        if st.button("Atrás", use_container_width=True):
+        if st.button("AtrÃ¡s", use_container_width=True):
             st.session_state["guided_step"] = "welcome"
             st.rerun()
     with continue_column:
@@ -820,11 +900,11 @@ def render_followup_form_step() -> None:
         int(sessions["session_number"].max()) + 1 if not sessions.empty else 1
     )
 
-    st.title("Seguimiento de evolución")
+    st.title("Seguimiento de evoluciÃ³n")
     st.caption(f"Paciente seleccionado: {patient['name']}")
     st.markdown("**Historial de sesiones**")
     if sessions.empty:
-        st.info("Este paciente todavía no tiene sesiones registradas.")
+        st.info("Este paciente todavÃ­a no tiene sesiones registradas.")
     else:
         st.dataframe(
             format_sessions_for_followup(sessions),
@@ -833,14 +913,14 @@ def render_followup_form_step() -> None:
         )
 
     with st.form("patient_followup_session_form"):
-        st.write(f"**Nueva sesión:** {next_session_number}")
+        st.write(f"**Nueva sesiÃ³n:** {next_session_number}")
         session_date = st.date_input(
             "Fecha",
             value=date.today(),
             max_value=date.today(),
         )
         comparison = st.radio(
-            "¿Cómo se siente comparado con la última consulta?",
+            "Â¿CÃ³mo se siente comparado con la Ãºltima consulta?",
             ["Mucho mejor", "Algo mejor", "Igual", "Peor"],
             index=None,
         )
@@ -852,28 +932,28 @@ def render_followup_form_step() -> None:
             step=0.5,
         )
         global_score = st.slider(
-            "Estado general últimos 7 días",
+            "Estado general Ãºltimos 7 dÃ­as",
             min_value=0.0,
             max_value=10.0,
             value=5.0,
             step=0.5,
         )
         medication_change = st.radio(
-            "¿Cambió la medicación?",
-            ["No", "Disminuyó", "Aumentó", "Suspendió", "No sabe"],
+            "Â¿CambiÃ³ la medicaciÃ³n?",
+            ["No", "DisminuyÃ³", "AumentÃ³", "SuspendiÃ³", "No sabe"],
             index=None,
         )
         post_session_discomfort = st.radio(
-            "¿Tuvo alguna molestia luego de la sesión anterior?",
-            ["No", "Sí, leve", "Sí, moderada", "Sí, intensa"],
+            "Â¿Tuvo alguna molestia luego de la sesiÃ³n anterior?",
+            ["No", "SÃ­, leve", "SÃ­, moderada", "SÃ­, intensa"],
             index=None,
         )
         free_comment = st.text_area("Comentario libre", max_chars=1200)
-        st.caption("Puede escribir o dictar desde el micrófono del celular.")
+        st.caption("Puede escribir o dictar desde el micrÃ³fono del celular.")
 
         back_column, save_column = st.columns(2)
         back_pressed = back_column.form_submit_button(
-            "Atrás", use_container_width=True
+            "AtrÃ¡s", use_container_width=True
         )
         save_pressed = save_column.form_submit_button(
             "Guardar seguimiento",
@@ -889,21 +969,21 @@ def render_followup_form_step() -> None:
             st.error("Complete todas las opciones antes de guardar.")
             return
         if session_number_exists(patient_id, next_session_number):
-            st.error("Ese número de sesión ya existe para el paciente.")
+            st.error("Ese nÃºmero de sesiÃ³n ya existe para el paciente.")
             return
 
         adverse_event_severity = {
             "No": "Ninguno",
-            "Sí, leve": "Leve",
-            "Sí, moderada": "Moderado",
-            "Sí, intensa": "Severo",
+            "SÃ­, leve": "Leve",
+            "SÃ­, moderada": "Moderado",
+            "SÃ­, intensa": "Severo",
         }[post_session_discomfort]
         adverse_description = (
             post_session_discomfort if post_session_discomfort != "No" else ""
         )
         notes = (
-            f"Evolución comparada con la última consulta: {comparison}\n"
-            f"Cambio de medicación: {medication_change}\n"
+            f"EvoluciÃ³n comparada con la Ãºltima consulta: {comparison}\n"
+            f"Cambio de medicaciÃ³n: {medication_change}\n"
             f"Molestias posteriores: {post_session_discomfort}\n"
             f"Comentario libre: {free_comment.strip() or 'Sin comentario'}"
         )
@@ -974,8 +1054,8 @@ def render_thanks_step() -> None:
     )
     st.title("RESUMEN")
     st.write(
-        "Revise la información cargada. Si necesita corregir algo, presione "
-        "Atrás."
+        "Revise la informaciÃ³n cargada. Si necesita corregir algo, presione "
+        "AtrÃ¡s."
     )
     consultation_type = st.session_state.get(
         "tipo_consulta",
@@ -1000,11 +1080,11 @@ def render_thanks_step() -> None:
         f"{'registrado' if personal_data.get('email') else 'no registrado'}"
     )
     st.write(
-        f"**Problema o síntoma principal:** "
+        f"**Problema o sÃ­ntoma principal:** "
         f"{problem_details.get('problem', 'Sin completar')}"
     )
     st.write(
-        f"**Tiempo de evolución:** "
+        f"**Tiempo de evoluciÃ³n:** "
         f"{problem_details.get('duration', 'Sin completar')}"
     )
     intensity = problem_details.get("intensity", "Sin completar")
@@ -1018,11 +1098,11 @@ def render_thanks_step() -> None:
         f"{follow_up_orientation.get('improves_with', 'Sin completar')}"
     )
     st.write(
-        f"**Medicación relacionada:** "
+        f"**MedicaciÃ³n relacionada:** "
         f"{follow_up_orientation.get('medication_related', 'Sin completar')}"
     )
     st.write(
-        f"**Limitación diaria:** "
+        f"**LimitaciÃ³n diaria:** "
         f"{follow_up_orientation.get('daily_limitation', 'Sin completar')}"
     )
     for item in adaptive_details.values():
@@ -1053,19 +1133,19 @@ def render_thanks_step() -> None:
 def render_problem_details_step() -> None:
     """Collect the main problem in patient-friendly language."""
     hide_sidebar()
-    st.title("Cuéntenos su problema")
+    st.title("CuÃ©ntenos su problema")
 
     selected_category = st.session_state.get("selected_initial_category", "")
     duration_options = [
         "Menos de 1 semana",
         "Menos de 1 mes",
-        "Más de 3 meses",
-        "Más de 1 año",
+        "MÃ¡s de 3 meses",
+        "MÃ¡s de 1 aÃ±o",
     ]
     saved_problem_details = st.session_state.get("guided_problem_details", {})
     category_fields = {
         "Insomnio": {
-            "label": "¿Qué problema tiene con el sueño?",
+            "label": "Â¿QuÃ© problema tiene con el sueÃ±o?",
             "options": [
                 "Me cuesta dormir",
                 "Me despierto varias veces",
@@ -1073,35 +1153,35 @@ def render_problem_details_step() -> None:
                 "Duermo pero no descanso",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Estrés o ansiedad": {
-            "label": "¿Qué siente principalmente?",
+        "EstrÃ©s o ansiedad": {
+            "label": "Â¿QuÃ© siente principalmente?",
             "options": [
                 "Nerviosismo",
-                "Preocupación excesiva",
-                "Palpitaciones o tensión",
+                "PreocupaciÃ³n excesiva",
+                "Palpitaciones o tensiÃ³n",
                 "Ataques de ansiedad",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Tristeza o depresión": {
-            "label": "¿Qué siente principalmente?",
+        "Tristeza o depresiÃ³n": {
+            "label": "Â¿QuÃ© siente principalmente?",
             "options": [
                 "Tristeza",
                 "Falta de ganas",
                 "Cansancio emocional",
-                "Pérdida de interés",
+                "PÃ©rdida de interÃ©s",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Respiración": {
-            "label": "¿Cuál es el problema principal?",
+        "RespiraciÃ³n": {
+            "label": "Â¿CuÃ¡l es el problema principal?",
             "options": [
                 "Falta de aire",
                 "Tos",
@@ -1109,57 +1189,57 @@ def render_problem_details_step() -> None:
                 "Asma",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Digestión": {
-            "label": "¿Cuál es el problema principal?",
+        "DigestiÃ³n": {
+            "label": "Â¿CuÃ¡l es el problema principal?",
             "options": [
                 "Acidez o reflujo",
-                "Distensión abdominal",
-                "Estreñimiento",
+                "DistensiÃ³n abdominal",
+                "EstreÃ±imiento",
                 "Diarrea",
-                "Náuseas",
+                "NÃ¡useas",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
-        "Salud urinaria, próstata o ginecológica": {
-            "label": "¿Cuál es el problema principal?",
+        "Salud urinaria, prÃ³stata o ginecolÃ³gica": {
+            "label": "Â¿CuÃ¡l es el problema principal?",
             "options": [
                 "Orinar frecuentemente",
                 "Ardor al orinar",
-                "Dolor pélvico",
-                "Síntomas prostáticos",
-                "Síntomas ginecológicos",
+                "Dolor pÃ©lvico",
+                "SÃ­ntomas prostÃ¡ticos",
+                "SÃ­ntomas ginecolÃ³gicos",
                 "Otro",
             ],
-            "slider_label": "¿Cuánto afecta su vida diaria?",
-            "caption": "0 = nada, 10 = muchísimo.",
+            "slider_label": "Â¿CuÃ¡nto afecta su vida diaria?",
+            "caption": "0 = nada, 10 = muchÃ­simo.",
         },
     }
 
     other_problem_detail = ""
     if selected_category == "Otro problema de salud":
         problem = st.session_state.get("other_health_problem_description", "")
-        st.write(f"**Problema o síntoma principal:** {problem}")
-        slider_label = "¿Cuánto afecta su vida diaria?"
-        caption = "0 = nada, 10 = muchísimo."
+        st.write(f"**Problema o sÃ­ntoma principal:** {problem}")
+        slider_label = "Â¿CuÃ¡nto afecta su vida diaria?"
+        caption = "0 = nada, 10 = muchÃ­simo."
     elif selected_category == "Dolor y movilidad":
         problem = st.text_input(
-            "¿Cuál es el problema que desea tratar?",
+            "Â¿CuÃ¡l es el problema que desea tratar?",
             value=saved_problem_details.get("problem", ""),
             placeholder="Ejemplo: dolor lumbar, dolor de rodilla, dolor cervical.",
         )
-        slider_label = "¿Qué intensidad tiene hoy?"
-        caption = "0 = nada, 10 = máximo."
+        slider_label = "Â¿QuÃ© intensidad tiene hoy?"
+        caption = "0 = nada, 10 = mÃ¡ximo."
     else:
         field_config = category_fields.get(selected_category, {})
         problem_options = field_config.get("options", ["Otro"])
         saved_problem = saved_problem_details.get("problem")
         problem = st.selectbox(
-            field_config.get("label", "¿Cuál es el problema principal?"),
+            field_config.get("label", "Â¿CuÃ¡l es el problema principal?"),
             problem_options,
             index=option_index(
                 problem_options,
@@ -1167,7 +1247,7 @@ def render_problem_details_step() -> None:
                 if saved_problem in problem_options
                 else "Otro" if saved_problem else None,
             ),
-            placeholder="Seleccione una opción",
+            placeholder="Seleccione una opciÃ³n",
         )
         if problem == "Otro":
             other_problem_detail = st.text_area(
@@ -1183,15 +1263,15 @@ def render_problem_details_step() -> None:
             show_dictation_help()
         slider_label = field_config.get(
             "slider_label",
-            "¿Cuánto afecta su vida diaria?",
+            "Â¿CuÃ¡nto afecta su vida diaria?",
         )
-        caption = field_config.get("caption", "0 = nada, 10 = muchísimo.")
+        caption = field_config.get("caption", "0 = nada, 10 = muchÃ­simo.")
 
     duration = st.selectbox(
-        "¿Hace cuánto tiempo lo tiene?",
+        "Â¿Hace cuÃ¡nto tiempo lo tiene?",
         duration_options,
         index=option_index(duration_options, saved_problem_details.get("duration")),
-        placeholder="Seleccione una opción",
+        placeholder="Seleccione una opciÃ³n",
     )
     intensity = st.slider(
         slider_label,
@@ -1210,7 +1290,7 @@ def render_problem_details_step() -> None:
                 return False
             problem_text = other_problem_detail.strip()
         if not problem_text or not duration:
-            st.error("Complete el problema y el tiempo de evolución.")
+            st.error("Complete el problema y el tiempo de evoluciÃ³n.")
             return False
         st.session_state["guided_problem_details"] = {
             "problem": problem_text,
@@ -1233,37 +1313,37 @@ def render_follow_up_orientation_step() -> None:
     saved_follow_up = st.session_state.get("guided_follow_up_orientation", {})
 
     worsens_with = st.text_input(
-        "¿Qué empeora su problema?",
+        "Â¿QuÃ© empeora su problema?",
         value=saved_follow_up.get("worsens_with", "").replace(
             "Sin completar",
             "",
         ),
-        placeholder="Ejemplo: caminar, estrés, comida, frío, noche, esfuerzo.",
+        placeholder="Ejemplo: caminar, estrÃ©s, comida, frÃ­o, noche, esfuerzo.",
     )
     improves_with = st.text_input(
-        "¿Qué mejora su problema?",
+        "Â¿QuÃ© mejora su problema?",
         value=saved_follow_up.get("improves_with", "").replace(
             "Sin completar",
             "",
         ),
-        placeholder="Ejemplo: reposo, calor, medicación, masajes, dormir.",
+        placeholder="Ejemplo: reposo, calor, medicaciÃ³n, masajes, dormir.",
     )
-    medication_options = ["No", "Sí", "No estoy seguro/a"]
+    medication_options = ["No", "SÃ­", "No estoy seguro/a"]
     saved_medication = saved_follow_up.get("medication_related")
     saved_medication_option = (
         saved_medication
         if saved_medication in medication_options
-        else "Sí" if saved_medication else None
+        else "SÃ­" if saved_medication else None
     )
     medication_related = st.radio(
-        "¿Toma actualmente algún medicamento relacionado con este problema?",
+        "Â¿Toma actualmente algÃºn medicamento relacionado con este problema?",
         medication_options,
         index=option_index(medication_options, saved_medication_option),
     )
     medication_name = ""
-    if medication_related == "Sí":
+    if medication_related == "SÃ­":
         medication_name = st.text_input(
-            "¿Cuál?",
+            "Â¿CuÃ¡l?",
             value=(
                 saved_medication
                 if saved_medication not in medication_options
@@ -1272,7 +1352,7 @@ def render_follow_up_orientation_step() -> None:
         )
     limitation_options = ["No", "Un poco", "Bastante", "Mucho"]
     daily_limitation = st.radio(
-        "¿Este problema limita sus actividades diarias?",
+        "Â¿Este problema limita sus actividades diarias?",
         limitation_options,
         index=option_index(
             limitation_options,
@@ -1284,12 +1364,12 @@ def render_follow_up_orientation_step() -> None:
         if not medication_related or not daily_limitation:
             st.error("Complete las opciones para continuar.")
             return False
-        if medication_related == "Sí" and not medication_name.strip():
-            st.error("Indique cuál medicamento toma.")
+        if medication_related == "SÃ­" and not medication_name.strip():
+            st.error("Indique cuÃ¡l medicamento toma.")
             return False
 
         medication_summary = medication_related
-        if medication_related == "Sí":
+        if medication_related == "SÃ­":
             medication_summary = medication_name.strip()
 
         st.session_state["guided_follow_up_orientation"] = {
@@ -1315,19 +1395,19 @@ def render_follow_up_orientation_step() -> None:
 def render_adaptive_details_step() -> None:
     """Collect a few patient-friendly details for the selected main reason."""
     hide_sidebar()
-    st.title("Un poco más de detalle")
+    st.title("Un poco mÃ¡s de detalle")
 
     selected_category = st.session_state.get("selected_initial_category", "")
     adaptive_questions = {
         "Dolor y movilidad": [
             (
                 "problem_location",
-                "¿Dónde se localiza principalmente el problema?",
+                "Â¿DÃ³nde se localiza principalmente el problema?",
                 [
                     "Cuello",
                     "Hombro",
                     "Codo",
-                    "Mano o muñeca",
+                    "Mano o muÃ±eca",
                     "Espalda alta",
                     "Espalda baja",
                     "Cadera",
@@ -1339,17 +1419,17 @@ def render_adaptive_details_step() -> None:
             ),
             (
                 "pain_spread",
-                "¿El dolor se extiende hacia otra zona?",
-                ["No", "Sí"],
+                "Â¿El dolor se extiende hacia otra zona?",
+                ["No", "SÃ­"],
             ),
             (
                 "pain_description",
-                "¿Qué describe mejor el dolor?",
+                "Â¿QuÃ© describe mejor el dolor?",
                 [
                     "Punzante",
                     "Ardor",
                     "Rigidez",
-                    "Presión",
+                    "PresiÃ³n",
                     "Hormigueo",
                     "Otro",
                 ],
@@ -1358,7 +1438,7 @@ def render_adaptive_details_step() -> None:
         "Insomnio": [
             (
                 "sleep_problem",
-                "¿Qué ocurre principalmente?",
+                "Â¿QuÃ© ocurre principalmente?",
                 [
                     "Me cuesta dormirme",
                     "Me despierto muchas veces",
@@ -1368,22 +1448,22 @@ def render_adaptive_details_step() -> None:
             ),
             (
                 "sleep_hours",
-                "¿Cuántas horas duerme aproximadamente?",
-                ["Menos de 4", "4 a 5", "6 a 7", "Más de 7"],
+                "Â¿CuÃ¡ntas horas duerme aproximadamente?",
+                ["Menos de 4", "4 a 5", "6 a 7", "MÃ¡s de 7"],
             ),
         ],
-        "Estrés o ansiedad": [
+        "EstrÃ©s o ansiedad": [
             (
                 "main_stressor",
-                "¿Qué lo afecta más?",
-                ["Trabajo", "Familia", "Economía", "Salud", "Otro"],
+                "Â¿QuÃ© lo afecta mÃ¡s?",
+                ["Trabajo", "Familia", "EconomÃ­a", "Salud", "Otro"],
             ),
             (
                 "physical_symptoms",
-                "¿Tiene síntomas físicos?",
+                "Â¿Tiene sÃ­ntomas fÃ­sicos?",
                 [
                     "Palpitaciones",
-                    "Tensión muscular",
+                    "TensiÃ³n muscular",
                     "Falta de aire",
                     "Problemas digestivos",
                     "Ninguno",
@@ -1391,45 +1471,45 @@ def render_adaptive_details_step() -> None:
                 ],
             ),
         ],
-        "Tristeza o depresión": [
+        "Tristeza o depresiÃ³n": [
             (
                 "mood_description",
-                "¿Qué describe mejor la situación?",
+                "Â¿QuÃ© describe mejor la situaciÃ³n?",
                 [
                     "Tristeza persistente",
-                    "Falta de motivación",
+                    "Falta de motivaciÃ³n",
                     "Aislamiento",
                     "Cansancio emocional",
                     "Llanto frecuente",
                 ],
             ),
         ],
-        "Digestión": [
+        "DigestiÃ³n": [
             (
                 "digestive_symptom",
-                "¿Cuál es el síntoma principal?",
+                "Â¿CuÃ¡l es el sÃ­ntoma principal?",
                 [
-                    "Distensión abdominal",
+                    "DistensiÃ³n abdominal",
                     "Acidez",
                     "Reflujo",
                     "Diarrea",
-                    "Constipación",
+                    "ConstipaciÃ³n",
                     "Dolor abdominal",
                 ],
             ),
         ],
-        "Respiración": [
+        "RespiraciÃ³n": [
             (
                 "breathing_problem",
-                "¿Qué problema presenta?",
-                ["Tos", "Falta de aire", "Congestión nasal", "Rinitis", "Otro"],
+                "Â¿QuÃ© problema presenta?",
+                ["Tos", "Falta de aire", "CongestiÃ³n nasal", "Rinitis", "Otro"],
             ),
         ],
-        "Salud urinaria, próstata o ginecológica": [
+        "Salud urinaria, prÃ³stata o ginecolÃ³gica": [
             (
                 "urinary_or_intimate_reason",
-                "¿Cuál es el principal motivo?",
-                ["Urinario", "Prostático", "Ginecológico", "Sexual", "Otro"],
+                "Â¿CuÃ¡l es el principal motivo?",
+                ["Urinario", "ProstÃ¡tico", "GinecolÃ³gico", "Sexual", "Otro"],
             ),
         ],
     }
@@ -1452,7 +1532,7 @@ def render_adaptive_details_step() -> None:
         if "Otro" in options and saved_answer not in (None, *options):
             display_answer = "Otro"
         if key == "pain_spread" and saved_answer not in (None, *options):
-            display_answer = "Sí"
+            display_answer = "SÃ­"
         answer = st.radio(
             question,
             options,
@@ -1464,16 +1544,16 @@ def render_adaptive_details_step() -> None:
             requires_detail = True
             labels = {
                 "problem_location": (
-                    "Describa brevemente en qué zona o parte del cuerpo se "
+                    "Describa brevemente en quÃ© zona o parte del cuerpo se "
                     "localiza"
                 ),
-                "pain_description": "Describa brevemente cómo siente el dolor",
+                "pain_description": "Describa brevemente cÃ³mo siente el dolor",
                 "main_stressor": (
-                    "Por favor describa brevemente qué situación considera "
-                    "que más influye en su problema actual"
+                    "Por favor describa brevemente quÃ© situaciÃ³n considera "
+                    "que mÃ¡s influye en su problema actual"
                 ),
                 "physical_symptoms": (
-                    "Describa brevemente los síntomas físicos más importantes"
+                    "Describa brevemente los sÃ­ntomas fÃ­sicos mÃ¡s importantes"
                 ),
                 "breathing_problem": (
                     "Describa brevemente el problema respiratorio"
@@ -1488,10 +1568,10 @@ def render_adaptive_details_step() -> None:
                 max_chars=500,
             )
             show_dictation_help()
-        elif key == "pain_spread" and answer == "Sí":
+        elif key == "pain_spread" and answer == "SÃ­":
             requires_detail = True
             other_answer = st.text_area(
-                "Describa hacia dónde se extiende",
+                "Describa hacia dÃ³nde se extiende",
                 value=saved_detail_text,
                 max_chars=500,
             )
@@ -1537,22 +1617,22 @@ def render_global_functional_score_step() -> None:
     hide_sidebar()
     st.title("Escala funcional global")
     st.write(
-        "Pensando en su vida diaria durante los últimos 7 días, "
-        "¿cómo se ha sentido en general?"
+        "Pensando en su vida diaria durante los Ãºltimos 7 dÃ­as, "
+        "Â¿cÃ³mo se ha sentido en general?"
     )
     st.caption(
-        "Considere su dolor, energía, sueño, estado de ánimo y capacidad para "
+        "Considere su dolor, energÃ­a, sueÃ±o, estado de Ã¡nimo y capacidad para "
         "realizar sus actividades habituales."
     )
 
     global_functional_score = st.slider(
-        "Estado general durante los últimos 7 días",
+        "Estado general durante los Ãºltimos 7 dÃ­as",
         min_value=0,
         max_value=10,
         value=int(st.session_state.get("global_functional_score", 5)),
         step=1,
     )
-    st.caption("0 = Muy mal · 5 = Regular · 10 = Muy bien")
+    st.caption("0 = Muy mal Â· 5 = Regular Â· 10 = Muy bien")
 
     def continue_from_global_functional_score() -> bool:
         st.session_state["global_functional_score"] = global_functional_score
@@ -1573,27 +1653,27 @@ def render_global_functional_score_step() -> None:
 def render_treatment_expectations_step() -> None:
     """Collect the patient's expectations for acupuncture treatment."""
     hide_sidebar()
-    st.title("¿Qué espera lograr con el tratamiento de Acupuntura?")
+    st.title("Â¿QuÃ© espera lograr con el tratamiento de Acupuntura?")
     st.write(
-        "No existe una respuesta correcta o incorrecta. Queremos conocer cuál "
-        "es el resultado más importante para usted."
+        "No existe una respuesta correcta o incorrecta. Queremos conocer cuÃ¡l "
+        "es el resultado mÃ¡s importante para usted."
     )
 
     expectation_options = [
         "Reducir el dolor",
         "Eliminar completamente el dolor",
         "Dormir mejor",
-        "Reducir el estrés o la ansiedad",
-        "Mejorar el estado de ánimo",
+        "Reducir el estrÃ©s o la ansiedad",
+        "Mejorar el estado de Ã¡nimo",
         "Mejorar mi movilidad",
         "Mejorar mi calidad de vida",
-        "Tener más energía",
+        "Tener mÃ¡s energÃ­a",
         "Reducir medicamentos",
         "Suspender medicamentos, si fuera posible",
-        "Evitar una cirugía",
+        "Evitar una cirugÃ­a",
         "Recuperar una actividad que hoy no puedo realizar",
-        "Mejorar mi rendimiento físico o deportivo",
-        "Mejorar una función específica de mi organismo",
+        "Mejorar mi rendimiento fÃ­sico o deportivo",
+        "Mejorar una funciÃ³n especÃ­fica de mi organismo",
         "Otro objetivo",
     ]
     saved_treatment_expectations = st.session_state.get(
@@ -1632,19 +1712,19 @@ def render_treatment_expectations_step() -> None:
     if selected_count >= 2:
         st.info(
             "Para enfocar mejor el seguimiento, registre sus objetivos "
-            "principales. Si desea agregar algo más, puede escribirlo en el "
+            "principales. Si desea agregar algo mÃ¡s, puede escribirlo en el "
             "espacio libre."
         )
     other_expectation = ""
     if "Otro objetivo" in selected_expectations:
         other_expectation = st.text_area(
-            "Describa brevemente cuál sería el resultado ideal para usted",
+            "Describa brevemente cuÃ¡l serÃ­a el resultado ideal para usted",
             value=saved_other_expectation,
             max_chars=500,
         )
         show_dictation_help()
     daily_life_result = st.text_area(
-        "Si el tratamiento fuera exitoso, dentro de 3 a 6 meses, ¿qué sería "
+        "Si el tratamiento fuera exitoso, dentro de 3 a 6 meses, Â¿quÃ© serÃ­a "
         "diferente en su vida cotidiana?",
         value=saved_treatment_expectations.get("daily_life_result", ""),
         max_chars=800,
@@ -1682,11 +1762,11 @@ def render_treatment_expectations_step() -> None:
 def render_final_closure_step() -> None:
     """Render the final professional closure after the guided flow is finished."""
     hide_sidebar()
-    st.title("EVALUACIÓN COMPLETADA CON ÉXITO")
+    st.title("EVALUACIÃ“N COMPLETADA CON Ã‰XITO")
     st.write(
         "Gracias por dedicar unos minutos a responder.\n\n"
-        "La información será revisada por el Dr. Mauricio Uehara y contribuirá "
-        "a orientar su estrategia terapéutica.\n\n"
+        "La informaciÃ³n serÃ¡ revisada por el Dr. Mauricio Uehara y contribuirÃ¡ "
+        "a orientar su estrategia terapÃ©utica.\n\n"
         "Lo esperamos en su consulta para comenzar el tratamiento.\n\n"
         "Hasta pronto."
     )
@@ -1709,8 +1789,8 @@ def render_thanks_step() -> None:
     )
     st.title("RESUMEN")
     st.write(
-        "Revise la información cargada. Si necesita corregir algo, presione "
-        "Atrás."
+        "Revise la informaciÃ³n cargada. Si necesita corregir algo, presione "
+        "AtrÃ¡s."
     )
     consultation_type = st.session_state.get(
         "tipo_consulta",
@@ -1735,11 +1815,11 @@ def render_thanks_step() -> None:
         f"{'registrado' if personal_data.get('email') else 'no registrado'}"
     )
     st.write(
-        f"**Problema o síntoma principal:** "
+        f"**Problema o sÃ­ntoma principal:** "
         f"{problem_details.get('problem', 'Sin completar')}"
     )
     st.write(
-        f"**Tiempo de evolución:** "
+        f"**Tiempo de evoluciÃ³n:** "
         f"{problem_details.get('duration', 'Sin completar')}"
     )
     intensity = problem_details.get("intensity", "Sin completar")
@@ -1753,11 +1833,11 @@ def render_thanks_step() -> None:
         f"{follow_up_orientation.get('improves_with', 'Sin completar')}"
     )
     st.write(
-        f"**Medicación relacionada:** "
+        f"**MedicaciÃ³n relacionada:** "
         f"{follow_up_orientation.get('medication_related', 'Sin completar')}"
     )
     st.write(
-        f"**Limitación diaria:** "
+        f"**LimitaciÃ³n diaria:** "
         f"{follow_up_orientation.get('daily_limitation', 'Sin completar')}"
     )
     for item in adaptive_details.values():
@@ -1767,7 +1847,7 @@ def render_thanks_step() -> None:
         "Sin completar",
     )
     st.write(
-        f"**Estado general últimos 7 días:** {global_functional_score}/10"
+        f"**Estado general Ãºltimos 7 dÃ­as:** {global_functional_score}/10"
     )
     expectations = treatment_expectations.get("expectations", [])
     expectations_text = (
@@ -1825,7 +1905,7 @@ def render_patient_followup_panel_section() -> None:
     st.subheader("Historial por paciente")
     patients = get_patients()
     if patients.empty:
-        st.info("Todavía no hay pacientes registrados.")
+        st.info("TodavÃ­a no hay pacientes registrados.")
         return
 
     options = patient_options(patients)
@@ -1837,7 +1917,7 @@ def render_patient_followup_panel_section() -> None:
     patient_id = options[selected_label]
     sessions = get_patient_sessions(patient_id)
     if sessions.empty:
-        st.info("El paciente seleccionado todavía no tiene sesiones registradas.")
+        st.info("El paciente seleccionado todavÃ­a no tiene sesiones registradas.")
         return
 
     table_data = format_sessions_for_followup(sessions)
@@ -1849,8 +1929,8 @@ def render_patient_followup_panel_section() -> None:
         x="session_number",
         y="eva_pre",
         markers=True,
-        title="Intensidad por sesión",
-        labels={"session_number": "Sesión", "eva_pre": "Intensidad actual"},
+        title="Intensidad por sesiÃ³n",
+        labels={"session_number": "SesiÃ³n", "eva_pre": "Intensidad actual"},
     )
     intensity_figure.update_yaxes(range=[0, 10], dtick=1)
     st.plotly_chart(intensity_figure, use_container_width=True)
@@ -1860,17 +1940,17 @@ def render_patient_followup_panel_section() -> None:
         x="session_number",
         y="functional_impact",
         markers=True,
-        title="Estado general por sesión",
+        title="Estado general por sesiÃ³n",
         labels={
-            "session_number": "Sesión",
-            "functional_impact": "Estado general últimos 7 días",
+            "session_number": "SesiÃ³n",
+            "functional_impact": "Estado general Ãºltimos 7 dÃ­as",
         },
     )
     global_figure.update_yaxes(range=[0, 10], dtick=1)
     st.plotly_chart(global_figure, use_container_width=True)
     st.caption(
-        "El panel utiliza nombre y código interno. No muestra DNI, teléfono "
-        "ni correo electrónico completos."
+        "El panel utiliza nombre y cÃ³digo interno. No muestra DNI, telÃ©fono "
+        "ni correo electrÃ³nico completos."
     )
 
 def render_professional_panel() -> None:
@@ -1892,13 +1972,13 @@ def render_professional_panel() -> None:
         return
 
     if not evaluations:
-        st.info("Todavía no hay evaluaciones registradas.")
+        st.info("TodavÃ­a no hay evaluaciones registradas.")
         return
 
     evaluations_df = pd.DataFrame(evaluations)
     st.metric("Total de evaluaciones completadas", len(evaluations))
 
-    st.subheader("Motivos principales más frecuentes")
+    st.subheader("Motivos principales mÃ¡s frecuentes")
     reasons_table = count_values_table(evaluations, "Motivo principal")
     if reasons_table.empty:
         st.info("Sin datos de motivo principal.")
@@ -1912,7 +1992,7 @@ def render_professional_panel() -> None:
         evaluations_df["Impacto actual"], errors="coerce"
     ).dropna()
     functional_values = pd.to_numeric(
-        evaluations_df["Estado general últimos 7 días"], errors="coerce"
+        evaluations_df["Estado general Ãºltimos 7 dÃ­as"], errors="coerce"
     ).dropna()
     impact_average = impact_values.mean() if not impact_values.empty else None
     functional_average = (
@@ -1924,7 +2004,7 @@ def render_professional_panel() -> None:
         f"{impact_average:.1f} de 10" if impact_average is not None else "Sin datos",
     )
     average_columns[1].metric(
-        "Estado general promedio últimos 7 días",
+        "Estado general promedio Ãºltimos 7 dÃ­as",
         (
             f"{functional_average:.1f} de 10"
             if functional_average is not None
@@ -1932,39 +2012,39 @@ def render_professional_panel() -> None:
         ),
     )
 
-    st.subheader("Tiempo de evolución")
+    st.subheader("Tiempo de evoluciÃ³n")
     st.dataframe(
         count_values_table(
             evaluations,
-            "Tiempo de evolución",
+            "Tiempo de evoluciÃ³n",
             [
                 "Menos de 1 semana",
                 "Menos de 1 mes",
-                "Más de 3 meses",
-                "Más de 1 año",
+                "MÃ¡s de 3 meses",
+                "MÃ¡s de 1 aÃ±o",
             ],
         ),
         hide_index=True,
         use_container_width=True,
     )
 
-    st.subheader("Limitación diaria")
+    st.subheader("LimitaciÃ³n diaria")
     st.dataframe(
         count_values_table(
             evaluations,
-            "Limitación diaria",
+            "LimitaciÃ³n diaria",
             ["No", "Un poco", "Bastante", "Mucho"],
         ),
         hide_index=True,
         use_container_width=True,
     )
 
-    st.subheader("Medicación relacionada")
+    st.subheader("MedicaciÃ³n relacionada")
     st.dataframe(
         count_values_table(
             evaluations,
-            "Medicación relacionada",
-            ["No", "Sí", "No estoy seguro/a"],
+            "MedicaciÃ³n relacionada",
+            ["No", "SÃ­", "No estoy seguro/a"],
         ),
         hide_index=True,
         use_container_width=True,
@@ -1979,7 +2059,7 @@ def render_professional_panel() -> None:
         for medication_name in medication_names:
             st.write(f"- {medication_name}")
 
-    st.subheader("Expectativas terapéuticas principales")
+    st.subheader("Expectativas terapÃ©uticas principales")
     expectation_counts: dict[str, int] = {}
     for evaluation in evaluations:
         for objective in evaluation.get("Objetivos principales seleccionados", []):
@@ -1994,7 +2074,7 @@ def render_professional_panel() -> None:
         columns=["Objetivo", "Cantidad"],
     )
     if expectations_table.empty:
-        st.info("Sin datos de objetivos terapéuticos.")
+        st.info("Sin datos de objetivos terapÃ©uticos.")
     else:
         st.dataframe(expectations_table, hide_index=True, use_container_width=True)
 
@@ -2010,12 +2090,12 @@ def render_professional_panel() -> None:
         "Contacto",
         "Tipo de consulta",
         "Motivo principal",
-        "Problema o síntoma principal",
-        "Tiempo de evolución",
+        "Problema o sÃ­ntoma principal",
+        "Tiempo de evoluciÃ³n",
         "Impacto actual",
-        "Estado general últimos 7 días",
-        "Limitación diaria",
-        "Medicación relacionada",
+        "Estado general Ãºltimos 7 dÃ­as",
+        "LimitaciÃ³n diaria",
+        "MedicaciÃ³n relacionada",
         "Objetivos principales seleccionados",
     ]
     st.dataframe(
@@ -2025,16 +2105,16 @@ def render_professional_panel() -> None:
     )
 
     csv_columns = [
-        "Evaluación ID",
+        "EvaluaciÃ³n ID",
         "Fecha/hora",
         "Tipo de consulta",
         "Motivo principal",
-        "Problema o síntoma principal",
-        "Tiempo de evolución",
+        "Problema o sÃ­ntoma principal",
+        "Tiempo de evoluciÃ³n",
         "Impacto actual",
-        "Estado general últimos 7 días",
-        "Limitación diaria",
-        "Medicación relacionada",
+        "Estado general Ãºltimos 7 dÃ­as",
+        "LimitaciÃ³n diaria",
+        "MedicaciÃ³n relacionada",
         "Medicamento informado",
         "Objetivos principales seleccionados",
     ]
@@ -2047,36 +2127,36 @@ def render_professional_panel() -> None:
         type="primary",
     )
     st.caption(
-        "La descarga no incluye nombre, DNI, teléfono ni correo electrónico."
+        "La descarga no incluye nombre, DNI, telÃ©fono ni correo electrÃ³nico."
     )
 
 def render_home() -> None:
     st.title("PROM-ACU")
-    st.subheader("Seguimiento clínico de pacientes tratados con acupuntura")
+    st.subheader("Seguimiento clÃ­nico de pacientes tratados con acupuntura")
     show_medical_warning()
     st.markdown(
         """
-        Esta demo permite registrar pacientes y sesiones, seguir la evolución
+        Esta demo permite registrar pacientes y sesiones, seguir la evoluciÃ³n
         del dolor mediante EVA, visualizar tendencias y generar un informe
-        clínico descriptivo.
+        clÃ­nico descriptivo.
 
         **Alcance del MVP**
 
         - Registro local y privado en SQLite.
-        - Clasificación clínica por categoría y subcategoría.
-        - PROM específico sugerido, todavía no administrado.
-        - EVA antes y después de cada sesión.
+        - ClasificaciÃ³n clÃ­nica por categorÃ­a y subcategorÃ­a.
+        - PROM especÃ­fico sugerido, todavÃ­a no administrado.
+        - EVA antes y despuÃ©s de cada sesiÃ³n.
         - Impacto funcional global de 0 a 10.
-        - Medicación relevante y evolución del consumo de analgésicos.
+        - MedicaciÃ³n relevante y evoluciÃ³n del consumo de analgÃ©sicos.
         - Severidad de eventos adversos.
-        - Cálculo de mejoría absoluta y porcentual.
-        - Dashboard y gráfico de evolución.
-        - Informe clínico descargable en texto.
+        - CÃ¡lculo de mejorÃ­a absoluta y porcentual.
+        - Dashboard y grÃ¡fico de evoluciÃ³n.
+        - Informe clÃ­nico descargable en texto.
         """
     )
     st.info(
-        "WOMAC está disponible en Fase 1 como carga resumida. Los demás PROMs "
-        "específicos permanecen pendientes de implementación."
+        "WOMAC estÃ¡ disponible en Fase 1 como carga resumida. Los demÃ¡s PROMs "
+        "especÃ­ficos permanecen pendientes de implementaciÃ³n."
     )
 
 
@@ -2093,7 +2173,7 @@ def render_patient_registration() -> None:
             "Sexo *",
             ["Femenino", "Masculino", "Intersexual", "Otro", "Prefiere no informar"],
         )
-        phone = st.text_input("Teléfono", max_chars=40)
+        phone = st.text_input("TelÃ©fono", max_chars=40)
         care_origin = st.selectbox(
             "Origen asistencial *",
             ["Hospital Avellaneda", "Consultorio Privado"],
@@ -2102,27 +2182,27 @@ def render_patient_registration() -> None:
         )
     with col2:
         diagnosis = st.text_input(
-            "Diagnóstico médico principal *",
+            "DiagnÃ³stico mÃ©dico principal *",
             max_chars=200,
-            help="Registrar únicamente el diagnóstico médico ya existente.",
+            help="Registrar Ãºnicamente el diagnÃ³stico mÃ©dico ya existente.",
         )
         category = st.selectbox(
-            "Categoría clínica *",
+            "CategorÃ­a clÃ­nica *",
             options=list(CLINICAL_CLASSIFICATION.keys()),
             index=None,
-            placeholder="Seleccione una categoría",
+            placeholder="Seleccione una categorÃ­a",
         )
         subcategory_options = (
             list(CLINICAL_CLASSIFICATION[category].keys()) if category else []
         )
         subcategory = st.selectbox(
-            "Subcategoría *",
+            "SubcategorÃ­a *",
             options=subcategory_options,
             index=None,
             placeholder=(
-                "Seleccione una subcategoría"
+                "Seleccione una subcategorÃ­a"
                 if category
-                else "Primero seleccione una categoría"
+                else "Primero seleccione una categorÃ­a"
             ),
             disabled=category is None,
         )
@@ -2135,12 +2215,12 @@ def render_patient_registration() -> None:
             "PROM sugerido",
             value=suggested_prom,
             disabled=True,
-            placeholder="Se asignará según la subcategoría",
+            placeholder="Se asignarÃ¡ segÃºn la subcategorÃ­a",
         )
         st.caption(
             f"Estado: {get_prom_implementation_status(suggested_prom)} "
-            "La clasificación organiza el seguimiento y no constituye un "
-            "diagnóstico automático."
+            "La clasificaciÃ³n organiza el seguimiento y no constituye un "
+            "diagnÃ³stico automÃ¡tico."
         )
 
     submitted = st.button(
@@ -2181,7 +2261,7 @@ def render_patient_registration() -> None:
             patient = get_patient(patient_id)
             patient_code = patient["patient_code"] if patient else "No disponible"
             st.success(
-                f"Paciente registrado correctamente. Código único: {patient_code}"
+                f"Paciente registrado correctamente. CÃ³digo Ãºnico: {patient_code}"
             )
         except sqlite3.IntegrityError:
             st.error("No se pudo registrar: revise el DNI y los datos ingresados.")
@@ -2212,7 +2292,7 @@ def render_session_registration() -> None:
         col1, col2 = st.columns(2)
         with col1:
             session_number = st.number_input(
-                "Número de sesión *",
+                "NÃºmero de sesiÃ³n *",
                 min_value=1,
                 value=suggested_number,
                 step=1,
@@ -2223,28 +2303,28 @@ def render_session_registration() -> None:
                 max_value=date.today(),
             )
             eva_pre = st.slider(
-                "EVA antes de la sesión",
+                "EVA antes de la sesiÃ³n",
                 min_value=0.0,
                 max_value=10.0,
                 value=5.0,
                 step=0.5,
             )
             eva_post = st.slider(
-                "EVA después de la sesión",
+                "EVA despuÃ©s de la sesiÃ³n",
                 min_value=0.0,
                 max_value=10.0,
                 value=5.0,
                 step=0.5,
             )
             pgic = st.selectbox(
-                "Comparado con el inicio del tratamiento, ¿cómo se encuentra hoy?",
+                "Comparado con el inicio del tratamiento, Â¿cÃ³mo se encuentra hoy?",
                 options=list(PGIC_OPTIONS.keys()),
                 index=None,
-                placeholder="Seleccione una opción",
+                placeholder="Seleccione una opciÃ³n",
                 format_func=lambda value: f"{value}. {PGIC_OPTIONS[value]}",
             )
             functional_impact = st.slider(
-                "¿Cuánto afecta actualmente su problema principal a sus "
+                "Â¿CuÃ¡nto afecta actualmente su problema principal a sus "
                 "actividades habituales?",
                 min_value=0.0,
                 max_value=10.0,
@@ -2254,20 +2334,20 @@ def render_session_registration() -> None:
             )
         with col2:
             medication_name = st.text_input(
-                "Medicación relevante actual",
+                "MedicaciÃ³n relevante actual",
                 max_chars=200,
                 placeholder="Nombre del medicamento o 'No usa'",
             )
             medication_frequency = st.text_input(
                 "Frecuencia de uso",
                 max_chars=120,
-                placeholder="Ej.: cada 8 horas, según necesidad",
+                placeholder="Ej.: cada 8 horas, segÃºn necesidad",
             )
             analgesic_change = st.selectbox(
-                "Consumo de analgésicos comparado con el inicio",
+                "Consumo de analgÃ©sicos comparado con el inicio",
                 options=ANALGESIC_CHANGE_OPTIONS,
                 index=None,
-                placeholder="Seleccione una opción",
+                placeholder="Seleccione una opciÃ³n",
             )
             adverse_event_severity = st.selectbox(
                 "Eventos adversos",
@@ -2275,27 +2355,27 @@ def render_session_registration() -> None:
                 index=0,
             )
             adverse_description = st.text_area(
-                "Descripción de eventos adversos",
+                "DescripciÃ³n de eventos adversos",
                 max_chars=1000,
                 help=(
                     "Completar cuando la severidad sea Leve, Moderado o Severo."
                 ),
             )
-            notes = st.text_area("Observaciones clínicas", max_chars=2000)
+            notes = st.text_area("Observaciones clÃ­nicas", max_chars=2000)
 
         submitted = st.form_submit_button(
-            "Guardar sesión",
+            "Guardar sesiÃ³n",
             type="primary",
             use_container_width=True,
         )
 
     if submitted:
         if pgic is None:
-            st.error("Seleccione una opción de PGIC.")
+            st.error("Seleccione una opciÃ³n de PGIC.")
             return
         if analgesic_change is None:
             st.error(
-                "Seleccione el consumo de analgésicos comparado con el inicio."
+                "Seleccione el consumo de analgÃ©sicos comparado con el inicio."
             )
             return
         if (
@@ -2305,7 +2385,7 @@ def render_session_registration() -> None:
             st.error("Describa el evento adverso registrado.")
             return
         if session_number_exists(patient_id, int(session_number)):
-            st.error("Ese número de sesión ya existe para el paciente.")
+            st.error("Ese nÃºmero de sesiÃ³n ya existe para el paciente.")
             return
 
         try:
@@ -2324,9 +2404,9 @@ def render_session_registration() -> None:
                 adverse_event_description=adverse_description,
                 notes=notes,
             )
-            st.success("Sesión registrada correctamente.")
+            st.success("SesiÃ³n registrada correctamente.")
         except sqlite3.IntegrityError:
-            st.error("No se pudo guardar la sesión. Verifique los datos.")
+            st.error("No se pudo guardar la sesiÃ³n. Verifique los datos.")
         except sqlite3.Error as error:
             st.error(f"Error de base de datos: {error}")
 
@@ -2342,7 +2422,7 @@ def render_womac_assessment() -> None:
             return "Severa"
         return "Muy severa"
 
-    st.header("Evaluación de dolor y movilidad")
+    st.header("EvaluaciÃ³n de dolor y movilidad")
     show_medical_warning()
     patients = get_patients()
 
@@ -2352,14 +2432,14 @@ def render_womac_assessment() -> None:
 
     options = patient_options(patients)
     selected_code = st.selectbox(
-        "Código del paciente",
+        "CÃ³digo del paciente",
         [""] + list(options.keys()),
-        format_func=lambda value: value or "Seleccione un código de paciente",
+        format_func=lambda value: value or "Seleccione un cÃ³digo de paciente",
         key="womac_patient",
     )
     if not selected_code:
         st.info(
-            "Seleccione un código de paciente para comenzar la evaluación WOMAC."
+            "Seleccione un cÃ³digo de paciente para comenzar la evaluaciÃ³n WOMAC."
         )
         return
 
@@ -2372,44 +2452,44 @@ def render_womac_assessment() -> None:
         st.info(
             "**Instrumento recomendado para seguimiento**\n\n"
             "Para este paciente, el instrumento recomendado es WOMAC / KOOS "
-            "según categoría clínica y criterio profesional."
+            "segÃºn categorÃ­a clÃ­nica y criterio profesional."
         )
         if "WOMAC" not in str(patient.get("suggested_prom") or ""):
             st.warning(
-                "WOMAC no figura como PROM sugerido para esta clasificación. "
-                "Confirme la pertinencia clínica antes de registrarlo."
+                "WOMAC no figura como PROM sugerido para esta clasificaciÃ³n. "
+                "Confirme la pertinencia clÃ­nica antes de registrarlo."
             )
 
     st.markdown(
         "Ingrese el resultado total obtenido en cada dominio del cuestionario "
         "WOMAC ya completado por el paciente.\n\n"
-        "- Dolor = suma de 5 preguntas (0–20)\n"
-        "- Rigidez = suma de 2 preguntas (0–8)\n"
-        "- Función física = suma de 17 preguntas (0–68)\n\n"
-        "Esta pantalla no administra los 24 ítems individuales. Solo registra "
+        "- Dolor = suma de 5 preguntas (0â€“20)\n"
+        "- Rigidez = suma de 2 preguntas (0â€“8)\n"
+        "- FunciÃ³n fÃ­sica = suma de 17 preguntas (0â€“68)\n\n"
+        "Esta pantalla no administra los 24 Ã­tems individuales. Solo registra "
         "los resultados resumidos por dominio."
     )
 
     with st.form("womac_form", clear_on_submit=True):
         assessment_type = st.selectbox(
-            "Tipo de evaluación",
+            "Tipo de evaluaciÃ³n",
             ["Basal", "Seguimiento", "Final"],
         )
         session_number = st.number_input(
-            "Número de sesión",
+            "NÃºmero de sesiÃ³n",
             min_value=1,
             step=1,
             value=1,
         )
         st.info(
-            "Número correlativo de la sesión de tratamiento.\n\n"
-            "- Basal = sesión inicial.\n"
+            "NÃºmero correlativo de la sesiÃ³n de tratamiento.\n\n"
+            "- Basal = sesiÃ³n inicial.\n"
             "- Seguimiento = sesiones posteriores."
         )
         col1, col2, col3 = st.columns(3)
         with col1:
             pain_score = st.number_input(
-                "Dolor total (0–20)",
+                "Dolor total (0â€“20)",
                 min_value=0,
                 max_value=20,
                 step=1,
@@ -2418,7 +2498,7 @@ def render_womac_assessment() -> None:
             )
         with col2:
             stiffness_score = st.number_input(
-                "Rigidez total (0–8)",
+                "Rigidez total (0â€“8)",
                 min_value=0,
                 max_value=8,
                 step=1,
@@ -2427,12 +2507,12 @@ def render_womac_assessment() -> None:
             )
         with col3:
             function_score = st.number_input(
-                "Función física total (0–68)",
+                "FunciÃ³n fÃ­sica total (0â€“68)",
                 min_value=0,
                 max_value=68,
                 step=1,
                 value=0,
-                help="Suma resumida de función física: 0 a 68.",
+                help="Suma resumida de funciÃ³n fÃ­sica: 0 a 68.",
             )
         total_score = (
             int(pain_score)
@@ -2441,9 +2521,9 @@ def render_womac_assessment() -> None:
         )
         st.markdown(f"**Puntaje WOMAC total: {total_score} / 96**")
         womac_severity = womac_interpretation(total_score)
-        st.info(f"**Interpretación clínica: {womac_severity}**")
+        st.info(f"**InterpretaciÃ³n clÃ­nica: {womac_severity}**")
         submitted = st.form_submit_button(
-            "Guardar evaluación",
+            "Guardar evaluaciÃ³n",
             type="secondary",
             use_container_width=True,
         )
@@ -2454,10 +2534,10 @@ def render_womac_assessment() -> None:
             and not assessments.empty
             and (assessments["assessment_type"] == "Basal").any()
         ):
-            st.error("Este paciente ya tiene una evaluación WOMAC basal.")
+            st.error("Este paciente ya tiene una evaluaciÃ³n WOMAC basal.")
             return
         if womac_assessment_exists(patient_id, int(session_number)):
-            st.error("Ya existe una evaluación WOMAC para ese número de sesión.")
+            st.error("Ya existe una evaluaciÃ³n WOMAC para ese nÃºmero de sesiÃ³n.")
             return
 
         try:
@@ -2473,13 +2553,13 @@ def render_womac_assessment() -> None:
                 "basal" if assessment_type == "Basal" else "de seguimiento"
             )
             st.success(
-                f"Evaluación {evaluation_label} registrada correctamente.\n\n"
+                f"EvaluaciÃ³n {evaluation_label} registrada correctamente.\n\n"
                 f"WOMAC total: {total_score}/96 ({womac_severity})\n\n"
-                f"Sesión: {int(session_number)}"
+                f"SesiÃ³n: {int(session_number)}"
             )
         except sqlite3.IntegrityError:
             st.error(
-                "No se pudo guardar WOMAC. Revise el número de sesión y "
+                "No se pudo guardar WOMAC. Revise el nÃºmero de sesiÃ³n y "
                 "los rangos ingresados."
             )
         except sqlite3.Error as error:
@@ -2498,9 +2578,9 @@ def render_womac_assessment() -> None:
             headers,
             [
                 "Estado",
-                "Sesión",
+                "SesiÃ³n",
                 "Total",
-                "Interpretación",
+                "InterpretaciÃ³n",
                 "Tipo",
                 "Registrado",
                 "Acciones",
@@ -2554,7 +2634,7 @@ def render_womac_assessment() -> None:
         if not detail_rows.empty:
             detail = detail_rows.iloc[0]
             with st.expander(
-                f"Detalle WOMAC · Sesión {int(detail['session_number'])}",
+                f"Detalle WOMAC Â· SesiÃ³n {int(detail['session_number'])}",
                 expanded=True,
             ):
                 detail_columns = st.columns(4)
@@ -2565,13 +2645,13 @@ def render_womac_assessment() -> None:
                     "Rigidez", f"{int(detail['stiffness_score'])}/8"
                 )
                 detail_columns[2].metric(
-                    "Función física", f"{int(detail['function_score'])}/68"
+                    "FunciÃ³n fÃ­sica", f"{int(detail['function_score'])}/68"
                 )
                 detail_columns[3].metric(
                     "WOMAC total", f"{int(detail['total_score'])}/96"
                 )
                 st.write(
-                    "**Interpretación:** "
+                    "**InterpretaciÃ³n:** "
                     f"{womac_interpretation(int(detail['total_score']))}"
                 )
 
@@ -2591,13 +2671,13 @@ def render_womac_assessment() -> None:
                     else ((basal_total - current_total) / basal_total) * 100
                 )
                 if score_change < 0:
-                    evolution = "Mejoría clínica"
+                    evolution = "MejorÃ­a clÃ­nica"
                 elif score_change > 0:
                     evolution = "Empeoramiento"
                 else:
                     evolution = "Sin cambios"
 
-                st.subheader("Resumen de evolución")
+                st.subheader("Resumen de evoluciÃ³n")
                 summary_columns = st.columns(3)
                 summary_columns[0].metric(
                     "WOMAC basal",
@@ -2605,12 +2685,12 @@ def render_womac_assessment() -> None:
                     womac_interpretation(basal_total),
                 )
                 summary_columns[1].metric(
-                    "Último WOMAC",
+                    "Ãšltimo WOMAC",
                     f"{current_total}/96",
                     womac_interpretation(current_total),
                 )
                 summary_columns[2].metric(
-                    "Porcentaje de mejoría",
+                    "Porcentaje de mejorÃ­a",
                     (
                         f"{improvement:.1f}%"
                         if improvement is not None
@@ -2619,9 +2699,9 @@ def render_womac_assessment() -> None:
                 )
                 st.markdown(
                     f"**Cambio absoluto:** {score_change:+d} puntos  \n"
-                    f"**Mejoría relativa:** "
+                    f"**MejorÃ­a relativa:** "
                     f"{f'{improvement:.1f}%' if improvement is not None else 'No calculable'}  \n"
-                    f"**Evolución:** {evolution}"
+                    f"**EvoluciÃ³n:** {evolution}"
                 )
 
 
@@ -2649,7 +2729,7 @@ def classify_womac_response(
     if improvement >= 20:
         response = "Respondedor"
     elif improvement >= 10:
-        response = "Mejoría parcial"
+        response = "MejorÃ­a parcial"
     elif improvement > -10:
         response = "Sin cambios"
     else:
@@ -2718,16 +2798,16 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
         ]
 
     if assessments.empty:
-        st.info("Todavía no hay evaluaciones WOMAC para analizar.")
+        st.info("TodavÃ­a no hay evaluaciones WOMAC para analizar.")
         return
 
-    st.markdown("#### Filtros clínicos")
+    st.markdown("#### Filtros clÃ­nicos")
     filter_columns = st.columns(3)
     diagnosis_options = sorted(
         assessments["diagnosis"].dropna().astype(str).unique().tolist()
     )
     selected_diagnosis = filter_columns[0].selectbox(
-        "Diagnóstico",
+        "DiagnÃ³stico",
         ["Todos"] + diagnosis_options,
         key="womac_filter_diagnosis",
     )
@@ -2745,7 +2825,7 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
         .tolist()
     )
     selected_category = filter_columns[1].selectbox(
-        "Categoría",
+        "CategorÃ­a",
         ["Todas"] + category_options,
         key="womac_filter_category",
     )
@@ -2762,7 +2842,7 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
         .tolist()
     )
     selected_subcategory = filter_columns[2].selectbox(
-        "Subcategoría",
+        "SubcategorÃ­a",
         ["Todas"] + subcategory_options,
         key="womac_filter_subcategory",
     )
@@ -2798,7 +2878,7 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
     )
     improved_patients = int(
         summary["clinical_response"].isin(
-            ["Respondedor", "Mejoría parcial"]
+            ["Respondedor", "MejorÃ­a parcial"]
         ).sum()
     )
 
@@ -2812,7 +2892,7 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
         len(filtered_assessments),
     )
     metric_row_1[2].metric(
-        "Mejoría media",
+        "MejorÃ­a media",
         (
             f"{average_improvement:.1f}%"
             if average_improvement is not None
@@ -2828,7 +2908,7 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
         ),
     )
     metric_row_1[4].metric(
-        "Desviación estándar",
+        "DesviaciÃ³n estÃ¡ndar",
         (
             f"{improvement_std:.1f}%"
             if improvement_std is not None
@@ -2859,20 +2939,20 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
     for column, label in zip(
         headers,
         [
-            "Código",
+            "CÃ³digo",
             "WOMAC basal",
-            "Último WOMAC",
+            "Ãšltimo WOMAC",
             "Diferencia",
-            "Mejoría",
+            "MejorÃ­a",
             "Sesiones entre mediciones",
-            "Respuesta clínica",
+            "Respuesta clÃ­nica",
         ],
     ):
         column.markdown(f"**{label}**")
 
     badge_styles = {
         "Respondedor": ("#dcfce7", "#166534"),
-        "Mejoría parcial": ("#ecfccb", "#3f6212"),
+        "MejorÃ­a parcial": ("#ecfccb", "#3f6212"),
         "Sin cambios": ("#f3f4f6", "#374151"),
         "Empeorado": ("#fee2e2", "#991b1b"),
         "No comparable": ("#dbeafe", "#1e40af"),
@@ -2920,7 +3000,7 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
             unsafe_allow_html=True,
         )
 
-    st.markdown("#### Evolución promedio de la cohorte")
+    st.markdown("#### EvoluciÃ³n promedio de la cohorte")
     group_evolution = (
         filtered_assessments.groupby("session_number", as_index=False)
         .agg(
@@ -2929,7 +3009,7 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
         )
         .rename(
             columns={
-                "session_number": "Sesión",
+                "session_number": "SesiÃ³n",
                 "womac_average": "WOMAC promedio",
                 "patient_count": "Pacientes",
             }
@@ -2937,24 +3017,24 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
     )
     group_figure = px.line(
         group_evolution,
-        x="Sesión",
+        x="SesiÃ³n",
         y="WOMAC promedio",
         markers=True,
         hover_data=["Pacientes"],
-        title="Evolución promedio WOMAC por sesión",
+        title="EvoluciÃ³n promedio WOMAC por sesiÃ³n",
     )
     group_figure.update_xaxes(dtick=1)
     group_figure.update_yaxes(range=[0, 96], dtick=8)
     st.plotly_chart(group_figure, use_container_width=True)
     st.caption(
         "Cada punto muestra el promedio de las evaluaciones disponibles en "
-        "esa sesión. La cantidad de pacientes puede variar entre sesiones."
+        "esa sesiÃ³n. La cantidad de pacientes puede variar entre sesiones."
     )
 
-    st.markdown("#### Evolución WOMAC por sesiones")
+    st.markdown("#### EvoluciÃ³n WOMAC por sesiones")
     patient_codes = summary["patient_code"].sort_values().tolist()
     selected_code = st.selectbox(
-        "Código del paciente",
+        "CÃ³digo del paciente",
         patient_codes,
         key="womac_dashboard_patient",
     )
@@ -2962,18 +3042,18 @@ def render_womac_dashboard(care_origin: str = "Todos") -> None:
         filtered_assessments["patient_code"] == selected_code
     ][["session_number", "total_score", "assessment_type"]].rename(
         columns={
-            "session_number": "Sesión",
+            "session_number": "SesiÃ³n",
             "total_score": "WOMAC total /96",
             "assessment_type": "Tipo",
         }
     )
     figure = px.line(
         chart_data,
-        x="Sesión",
+        x="SesiÃ³n",
         y="WOMAC total /96",
         markers=True,
         hover_data=["Tipo"],
-        title=f"Evolución WOMAC · {selected_code}",
+        title=f"EvoluciÃ³n WOMAC Â· {selected_code}",
     )
     figure.update_xaxes(dtick=1)
     figure.update_yaxes(range=[0, 96], dtick=8)
@@ -3026,9 +3106,9 @@ def render_dashboard() -> None:
         data["has_adverse_event"].fillna(0).astype(bool).sum()
     )
     agg1, agg2, agg3, agg4 = st.columns(4)
-    agg1.metric("Pacientes con mejoría EVA", eva_improved)
-    agg2.metric("Pacientes con mejoría PGIC", pgic_improved)
-    agg3.metric("Reducción de analgésicos", analgesic_reduction)
+    agg1.metric("Pacientes con mejorÃ­a EVA", eva_improved)
+    agg2.metric("Pacientes con mejorÃ­a PGIC", pgic_improved)
+    agg3.metric("ReducciÃ³n de analgÃ©sicos", analgesic_reduction)
     agg4.metric("Pacientes con eventos adversos", patients_with_adverse_events)
 
     render_womac_dashboard(selected_care_origin)
@@ -3038,16 +3118,16 @@ def render_dashboard() -> None:
         "latest_functional_impact"
     ].apply(format_functional_impact)
     data["clinical_category_display"] = data["clinical_category"].fillna(
-        "Pendiente de clasificación"
+        "Pendiente de clasificaciÃ³n"
     )
     data["clinical_subcategory_display"] = data["clinical_subcategory"].fillna(
-        "Pendiente de clasificación"
+        "Pendiente de clasificaciÃ³n"
     )
     data["suggested_prom_display"] = data["suggested_prom"].fillna(
-        "Pendiente de clasificación"
+        "Pendiente de clasificaciÃ³n"
     )
     data["care_origin_display"] = data["care_origin"].fillna(
-        "Pendiente de clasificación"
+        "Pendiente de clasificaciÃ³n"
     )
     display = data[
         [
@@ -3074,25 +3154,25 @@ def render_dashboard() -> None:
         columns={
             "name": "Paciente",
             "dni": "DNI",
-            "phone": "Teléfono",
-            "patient_code": "Código de paciente",
+            "phone": "TelÃ©fono",
+            "patient_code": "CÃ³digo de paciente",
             "care_origin_display": "Origen asistencial",
-            "clinical_category_display": "Categoría",
-            "clinical_subcategory_display": "Subcategoría",
+            "clinical_category_display": "CategorÃ­a",
+            "clinical_subcategory_display": "SubcategorÃ­a",
             "suggested_prom_display": "PROM sugerido",
-            "diagnosis": "Diagnóstico",
+            "diagnosis": "DiagnÃ³stico",
             "baseline_eva": "EVA basal",
-            "latest_eva": "Última EVA",
-            "latest_pgic_display": "Último PGIC",
-            "latest_functional_impact_display": "Último impacto funcional",
-            "latest_analgesic_change": "Cambio de analgésicos",
-            "latest_adverse_event_severity": "Último evento adverso",
+            "latest_eva": "Ãšltima EVA",
+            "latest_pgic_display": "Ãšltimo PGIC",
+            "latest_functional_impact_display": "Ãšltimo impacto funcional",
+            "latest_analgesic_change": "Cambio de analgÃ©sicos",
+            "latest_adverse_event_severity": "Ãšltimo evento adverso",
             "baseline_womac": "WOMAC basal",
-            "latest_womac": "Último WOMAC",
-            "womac_improvement_percentage": "Mejoría WOMAC (%)",
-            "improvement_percentage": "Mejoría (%)",
+            "latest_womac": "Ãšltimo WOMAC",
+            "womac_improvement_percentage": "MejorÃ­a WOMAC (%)",
+            "improvement_percentage": "MejorÃ­a (%)",
             "session_count": "Sesiones",
-            "clinical_status": "Estado clínico",
+            "clinical_status": "Estado clÃ­nico",
         }
     )
 
@@ -3102,20 +3182,20 @@ def render_dashboard() -> None:
         hide_index=True,
         column_config={
             "EVA basal": st.column_config.NumberColumn(format="%.1f"),
-            "Última EVA": st.column_config.NumberColumn(format="%.1f"),
-            "Mejoría (%)": st.column_config.NumberColumn(format="%.1f%%"),
+            "Ãšltima EVA": st.column_config.NumberColumn(format="%.1f"),
+            "MejorÃ­a (%)": st.column_config.NumberColumn(format="%.1f%%"),
             "WOMAC basal": st.column_config.NumberColumn(format="%d/96"),
-            "Último WOMAC": st.column_config.NumberColumn(format="%d/96"),
-            "Mejoría WOMAC (%)": st.column_config.NumberColumn(format="%.1f%%"),
+            "Ãšltimo WOMAC": st.column_config.NumberColumn(format="%d/96"),
+            "MejorÃ­a WOMAC (%)": st.column_config.NumberColumn(format="%.1f%%"),
         },
     )
 
-    st.subheader("Exportación para investigación")
+    st.subheader("ExportaciÃ³n para investigaciÃ³n")
     st.warning(PSEUDONYMIZATION_WARNING)
     research_data = get_pseudonymized_research_data()
     if not research_data.empty:
         research_data["adverse_event"] = research_data["adverse_event"].map(
-            {0: "No", 1: "Sí"}
+            {0: "No", 1: "SÃ­"}
         ).fillna("Sin registro")
     st.download_button(
         "Descargar CSV seudonimizado",
@@ -3124,7 +3204,7 @@ def render_dashboard() -> None:
         mime="text/csv",
     )
 
-    st.subheader("Evolución individual")
+    st.subheader("EvoluciÃ³n individual")
     options = {
         str(row["patient_code"]): int(row["id"])
         for _, row in data.iterrows()
@@ -3140,65 +3220,65 @@ def render_dashboard() -> None:
     womac_assessments = get_patient_womac_assessments(selected_id)
 
     st.info(
-        f"**Categoría:** {patient_row['clinical_category_display']}  \n"
-        f"**Subcategoría:** {patient_row['clinical_subcategory_display']}  \n"
+        f"**CategorÃ­a:** {patient_row['clinical_category_display']}  \n"
+        f"**SubcategorÃ­a:** {patient_row['clinical_subcategory_display']}  \n"
         f"**PROM sugerido:** {patient_row['suggested_prom_display']}  \n"
         f"**Estado:** "
         f"{get_prom_implementation_status(patient_row['suggested_prom_display'])}"
     )
 
-    st.subheader("Evolución WOMAC")
+    st.subheader("EvoluciÃ³n WOMAC")
     if womac_assessments.empty:
-        st.info("Este paciente todavía no tiene evaluaciones WOMAC.")
+        st.info("Este paciente todavÃ­a no tiene evaluaciones WOMAC.")
     else:
         womac_chart = womac_assessments[
             ["session_number", "total_score", "assessment_type"]
         ].rename(
             columns={
-                "session_number": "Sesión",
+                "session_number": "SesiÃ³n",
                 "total_score": "WOMAC total",
                 "assessment_type": "Tipo",
             }
         )
         womac_figure = px.line(
             womac_chart,
-            x="Sesión",
+            x="SesiÃ³n",
             y="WOMAC total",
             markers=True,
             hover_data=["Tipo"],
-            title="Evolución WOMAC total",
+            title="EvoluciÃ³n WOMAC total",
         )
         womac_figure.update_yaxes(range=[0, 96], dtick=8)
         womac_figure.update_xaxes(dtick=1)
         st.plotly_chart(womac_figure, use_container_width=True)
 
     if sessions.empty:
-        st.info("Este paciente todavía no tiene sesiones registradas.")
+        st.info("Este paciente todavÃ­a no tiene sesiones registradas.")
         return
 
     metric1, metric2, metric3, metric4, metric5, metric6 = st.columns(6)
     metric1.metric("EVA basal", f"{patient_row['baseline_eva']:.1f}")
-    metric2.metric("Última EVA", f"{patient_row['latest_eva']:.1f}")
+    metric2.metric("Ãšltima EVA", f"{patient_row['latest_eva']:.1f}")
     metric3.metric(
-        "Mejoría",
+        "MejorÃ­a",
         f"{patient_row['improvement_percentage']:.1f}%",
     )
     metric4.metric("Estado", patient_row["clinical_status"])
-    metric5.metric("Último PGIC", format_pgic(patient_row["latest_pgic"]))
+    metric5.metric("Ãšltimo PGIC", format_pgic(patient_row["latest_pgic"]))
     metric6.metric(
         "Impacto funcional",
         format_functional_impact(patient_row["latest_functional_impact"]),
     )
 
     chart_data = sessions[["session_number", "eva_pre"]].rename(
-        columns={"session_number": "Sesión", "eva_pre": "EVA pre sesión"}
+        columns={"session_number": "SesiÃ³n", "eva_pre": "EVA pre sesiÃ³n"}
     )
     figure = px.line(
         chart_data,
-        x="Sesión",
-        y="EVA pre sesión",
+        x="SesiÃ³n",
+        y="EVA pre sesiÃ³n",
         markers=True,
-        title="Evolución del dolor",
+        title="EvoluciÃ³n del dolor",
     )
     figure.update_yaxes(range=[0, 10], dtick=1)
     figure.update_xaxes(dtick=1)
@@ -3211,16 +3291,16 @@ def render_dashboard() -> None:
     if not functional_data.empty:
         functional_chart = functional_data.rename(
             columns={
-                "session_number": "Sesión",
+                "session_number": "SesiÃ³n",
                 "functional_impact": "Impacto funcional global",
             }
         )
         functional_figure = px.line(
             functional_chart,
-            x="Sesión",
+            x="SesiÃ³n",
             y="Impacto funcional global",
             markers=True,
-            title="Evolución del impacto funcional global",
+            title="EvoluciÃ³n del impacto funcional global",
         )
         functional_figure.update_yaxes(range=[0, 10], dtick=1)
         functional_figure.update_xaxes(dtick=1)
@@ -3228,7 +3308,7 @@ def render_dashboard() -> None:
     else:
         st.info("No hay registros de impacto funcional global para este paciente.")
 
-    st.subheader("Seguimiento clínico por sesión")
+    st.subheader("Seguimiento clÃ­nico por sesiÃ³n")
     clinical_history = sessions[
         [
             "session_number",
@@ -3258,21 +3338,21 @@ def render_dashboard() -> None:
         )
     clinical_history = clinical_history.rename(
         columns={
-            "session_number": "Sesión",
+            "session_number": "SesiÃ³n",
             "date": "Fecha",
             "pgic": "PGIC",
             "functional_impact": "Impacto funcional global",
-            "medication_name": "Medicación relevante",
+            "medication_name": "MedicaciÃ³n relevante",
             "medication_frequency": "Frecuencia",
-            "analgesic_change": "Cambio de analgésicos",
+            "analgesic_change": "Cambio de analgÃ©sicos",
             "adverse_event_severity": "Evento adverso",
-            "adverse_event_description": "Descripción",
+            "adverse_event_description": "DescripciÃ³n",
         }
     )
     st.dataframe(clinical_history, use_container_width=True, hide_index=True)
 
     st.caption(
-        f"Clasificación actual: "
+        f"ClasificaciÃ³n actual: "
         f"{clinical_status(patient_row['baseline_eva'], patient_row['latest_eva'])}."
     )
 
@@ -3288,11 +3368,11 @@ def render_report() -> None:
     report_type = st.radio(
         "Tipo de informe",
         [
-            "Informe clínico identificado",
-            "Informe seudonimizado para investigación",
+            "Informe clÃ­nico identificado",
+            "Informe seudonimizado para investigaciÃ³n",
         ],
     )
-    pseudonymized = report_type == "Informe seudonimizado para investigación"
+    pseudonymized = report_type == "Informe seudonimizado para investigaciÃ³n"
     if pseudonymized:
         st.warning(PSEUDONYMIZATION_WARNING)
 
@@ -3308,7 +3388,7 @@ def render_report() -> None:
     womac_assessments = get_patient_womac_assessments(patient_id)
 
     if patient is None:
-        st.error("No se pudo recuperar la información del paciente.")
+        st.error("No se pudo recuperar la informaciÃ³n del paciente.")
         return
 
     report = build_clinical_report(
@@ -3331,8 +3411,8 @@ def render_report() -> None:
         type="primary",
     )
     st.caption(
-        "Informe descriptivo de seguimiento. No constituye diagnóstico, "
-        "indicación terapéutica ni certificado médico."
+        "Informe descriptivo de seguimiento. No constituye diagnÃ³stico, "
+        "indicaciÃ³n terapÃ©utica ni certificado mÃ©dico."
     )
 
 
@@ -3407,26 +3487,26 @@ def main() -> None:
     with st.sidebar:
         st.title("PROM-ACU")
         page = st.radio(
-            "Navegación",
+            "NavegaciÃ³n",
             [
                 "Inicio",
                 "Panel profesional",
                 "Nuevo paciente",
                 "Seguimiento del paciente",
-                "Evaluación de dolor y movilidad",
+                "EvaluaciÃ³n de dolor y movilidad",
                 "Resultados",
                 "Informe",
             ],
         )
         st.divider()
-        st.caption("Demo MVP · Datos almacenados localmente")
+        st.caption("Demo MVP Â· Datos almacenados localmente")
 
     pages = {
         "Inicio": render_home,
         "Panel profesional": render_professional_panel,
         "Nuevo paciente": render_patient_registration,
         "Seguimiento del paciente": render_session_registration,
-        "Evaluación de dolor y movilidad": render_womac_assessment,
+        "EvaluaciÃ³n de dolor y movilidad": render_womac_assessment,
         "Resultados": render_dashboard,
         "Informe": render_report,
     }
