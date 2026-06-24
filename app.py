@@ -2412,6 +2412,14 @@ def render_therapeutic_cycles_panel_section() -> None:
         st.info("Todavía no hay pacientes registrados.")
         return
 
+    patient_options_by_label = professional_patient_options(patients)
+    selected_patient_label = st.selectbox(
+        "Ver paciente",
+        list(patient_options_by_label.keys()),
+        key="professional_cycles_patient",
+    )
+    selected_patient_id = patient_options_by_label[selected_patient_label]
+
     with sqlite3.connect(database_module.DB_PATH) as connection:
         connection.row_factory = sqlite3.Row
         cycle_rows = connection.execute(
@@ -2428,70 +2436,51 @@ def render_therapeutic_cycles_panel_section() -> None:
             FROM therapeutic_cycles AS cycle
             LEFT JOIN sessions AS session
                 ON session.therapeutic_cycle_id = cycle.id
+            WHERE cycle.patient_id = ?
             GROUP BY cycle.id
             ORDER BY cycle.fecha_inicio DESC, cycle.id DESC
-            """
+            """,
+            (selected_patient_id,),
         ).fetchall()
 
     if not cycle_rows:
-        st.info("Todavía no hay ciclos terapéuticos registrados.")
+        st.info("Este paciente todavía no tiene ciclos terapéuticos registrados.")
         return
 
-    patient_lookup = {
-        int(row["id"]): (
-            f"{str(row.get('name') or 'Sin nombre').strip()} "
-            f"({str(row['patient_code'])})"
-        )
-        for _, row in patients.iterrows()
-    }
-    cycle_totals: dict[int, int] = {}
-    for cycle in cycle_rows:
-        patient_id = int(cycle["patient_id"])
-        cycle_totals[patient_id] = cycle_totals.get(patient_id, 0) + 1
-
-    summary_rows = []
-    cycle_options: dict[str, int] = {}
-    for cycle in cycle_rows:
-        cycle_dict = dict(cycle)
-        patient_id = int(cycle_dict["patient_id"])
-        patient_label = patient_lookup.get(patient_id, f"Paciente {patient_id}")
-        summary_rows.append(
-            {
-                "Paciente": patient_label,
-                "Ciclo ID": int(cycle_dict["id"]),
-                "Ciclos registrados": cycle_totals.get(patient_id, 0),
-                "Fecha de inicio": cycle_dict["fecha_inicio"],
-                "Tipo de consulta": fix_visible_encoding(
-                    cycle_dict["tipo_consulta"] or "Sin completar"
-                ),
-                "Motivo principal": fix_visible_encoding(
-                    cycle_dict["main_reason"] or "Sin completar"
-                ),
-                "Problema principal": fix_visible_encoding(
-                    cycle_dict["main_problem"] or "Sin completar"
-                ),
-                "Estado del ciclo": cycle_dict["status"],
-                "Seguimientos de ese ciclo": int(cycle_dict["session_count"]),
-            }
-        )
-        cycle_options[
-            f"{patient_label} · {cycle_label(cycle_dict)}"
-        ] = int(cycle_dict["id"])
-
+    cycles = [dict(cycle) for cycle in cycle_rows]
+    summary_rows = [
+        {
+            "Ciclo ID": int(cycle["id"]),
+            "Fecha de inicio": cycle["fecha_inicio"],
+            "Tipo de consulta": fix_visible_encoding(
+                cycle["tipo_consulta"] or "Sin completar"
+            ),
+            "Motivo principal": fix_visible_encoding(
+                cycle["main_reason"] or "Sin completar"
+            ),
+            "Problema principal": fix_visible_encoding(
+                cycle["main_problem"] or "Sin completar"
+            ),
+            "Estado del ciclo": cycle["status"],
+            "Cantidad de seguimientos": int(cycle["session_count"]),
+        }
+        for cycle in cycles
+    ]
     st.dataframe(
         pd.DataFrame(summary_rows),
         hide_index=True,
         use_container_width=True,
     )
 
+    cycle_options = {cycle_label(cycle): int(cycle["id"]) for cycle in cycles}
     selected_cycle_label = st.selectbox(
-        "Ver seguimientos de un ciclo",
+        "Ver evolución de ciclo",
         list(cycle_options.keys()),
         key="professional_cycle_detail",
     )
     selected_cycle_id = cycle_options[selected_cycle_label]
     selected_cycle = next(
-        dict(cycle) for cycle in cycle_rows if int(cycle["id"]) == selected_cycle_id
+        cycle for cycle in cycles if int(cycle["id"]) == selected_cycle_id
     )
     if selected_cycle["status"] == "activo":
         if st.button("Cerrar ciclo seleccionado (alta)", use_container_width=True):
@@ -2507,6 +2496,43 @@ def render_therapeutic_cycles_panel_section() -> None:
             hide_index=True,
             use_container_width=True,
         )
+        chart_data = sessions.copy().sort_values("session_number")
+        intensity_figure = px.line(
+            chart_data,
+            x="session_number",
+            y="eva_pre",
+            markers=True,
+            title="Intensidad actual por sesión",
+            labels={"session_number": "Sesión", "eva_pre": "Intensidad actual"},
+        )
+        intensity_figure.update_yaxes(range=[0, 10], dtick=1)
+        st.plotly_chart(intensity_figure, use_container_width=True)
+
+        global_figure = px.line(
+            chart_data,
+            x="session_number",
+            y="functional_impact",
+            markers=True,
+            title="Estado general por sesión",
+            labels={
+                "session_number": "Sesión",
+                "functional_impact": "Estado general últimos 7 días",
+            },
+        )
+        global_figure.update_yaxes(range=[0, 10], dtick=1)
+        st.plotly_chart(global_figure, use_container_width=True)
+
+        comments = [
+            fix_visible_encoding(str(comment).strip())
+            for comment in sessions.get("notes", pd.Series(dtype=str)).fillna("")
+            if str(comment).strip()
+        ]
+        st.markdown("**Comentarios registrados**")
+        if comments:
+            for comment in comments:
+                st.write(comment)
+        else:
+            st.info("No hay comentarios registrados para este ciclo.")
 
 
 def render_professional_panel() -> None:
