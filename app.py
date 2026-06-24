@@ -1880,6 +1880,16 @@ def patient_options(patients: pd.DataFrame) -> dict[str, int]:
     }
 
 
+def professional_patient_options(patients: pd.DataFrame) -> dict[str, int]:
+    """Build professional-only labels with patient name and pseudonymized code."""
+    options: dict[str, int] = {}
+    for _, row in patients.iterrows():
+        patient_name = str(row.get("name") or "").strip() or "Sin nombre"
+        patient_code = str(row["patient_code"])
+        options[f"{patient_name} ({patient_code})"] = int(row["id"])
+    return options
+
+
 def count_values_table(
     evaluations: list[dict],
     field: str,
@@ -1908,7 +1918,7 @@ def render_patient_followup_panel_section() -> None:
         st.info("Todavía no hay pacientes registrados.")
         return
 
-    options = patient_options(patients)
+    options = professional_patient_options(patients)
     selected_label = st.selectbox(
         "Seleccionar paciente",
         list(options.keys()),
@@ -3205,10 +3215,7 @@ def render_dashboard() -> None:
     )
 
     st.subheader("Evolución individual")
-    options = {
-        str(row["patient_code"]): int(row["id"])
-        for _, row in data.iterrows()
-    }
+    options = professional_patient_options(data)
     selected_label = st.selectbox(
         "Paciente para visualizar",
         list(options.keys()),
