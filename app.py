@@ -2448,6 +2448,72 @@ def render_therapeutic_cycles_panel_section() -> None:
         return
 
     cycles = [dict(cycle) for cycle in cycle_rows]
+    cycle_dates = pd.to_datetime(
+        [cycle["fecha_inicio"] for cycle in cycles],
+        errors="coerce",
+    ).dropna()
+    treated_reasons = sorted(
+        {
+            fix_visible_encoding(cycle["main_reason"] or "Sin completar")
+            for cycle in cycles
+        }
+    )
+    active_cycle_count = sum(1 for cycle in cycles if cycle["status"] == "activo")
+    closed_cycle_count = sum(1 for cycle in cycles if cycle["status"] == "cerrado")
+    total_followups = sum(int(cycle["session_count"]) for cycle in cycles)
+
+    st.markdown("**Resumen global del paciente**")
+    metric_columns = st.columns(4)
+    metric_columns[0].metric("Ciclos terapéuticos", len(cycles))
+    metric_columns[1].metric("Seguimientos totales", total_followups)
+    metric_columns[2].metric("Ciclos activos", active_cycle_count)
+    metric_columns[3].metric("Ciclos cerrados", closed_cycle_count)
+    first_consultation = (
+        cycle_dates.min().strftime("%d/%m/%Y") if not cycle_dates.empty else "Sin fecha"
+    )
+    last_consultation = (
+        cycle_dates.max().strftime("%d/%m/%Y") if not cycle_dates.empty else "Sin fecha"
+    )
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "Primera consulta registrada": first_consultation,
+                    "Última consulta registrada": last_consultation,
+                    "Motivos tratados": ", ".join(treated_reasons),
+                }
+            ]
+        ),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    st.markdown("**Línea de tiempo de ciclos terapéuticos**")
+    for cycle in sorted(cycles, key=lambda item: (item["fecha_inicio"], item["id"])):
+        cycle_date = pd.to_datetime(cycle["fecha_inicio"], errors="coerce")
+        display_date = (
+            cycle_date.strftime("%d/%m/%Y")
+            if not pd.isna(cycle_date)
+            else cycle["fecha_inicio"]
+        )
+        with st.container(border=True):
+            st.write(f"**{display_date}**")
+            st.write(f"**Ciclo {int(cycle['id'])}**")
+            st.write(
+                f"Tipo de consulta: "
+                f"{fix_visible_encoding(cycle['tipo_consulta'] or 'Sin completar')}"
+            )
+            st.write(
+                f"Motivo: "
+                f"{fix_visible_encoding(cycle['main_reason'] or 'Sin completar')}"
+            )
+            st.write(
+                f"Problema: "
+                f"{fix_visible_encoding(cycle['main_problem'] or 'Sin completar')}"
+            )
+            st.write(f"Seguimientos: {int(cycle['session_count'])}")
+            st.write(f"Estado: {cycle['status']}")
+
     summary_rows = [
         {
             "Ciclo ID": int(cycle["id"]),
