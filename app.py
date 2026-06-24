@@ -2791,7 +2791,11 @@ def render_patient_evolution_history_section() -> None:
         labels={"session_number": "Sesión", "eva_pre": "Intensidad actual"},
     )
     intensity_figure.update_yaxes(range=[0, 10], dtick=1)
-    st.plotly_chart(intensity_figure, use_container_width=True)
+    st.plotly_chart(
+        intensity_figure,
+        use_container_width=True,
+        key=f"evolution_intensity_{selected_cycle_id}",
+    )
 
     global_figure = px.line(
         chart_data,
@@ -2805,7 +2809,11 @@ def render_patient_evolution_history_section() -> None:
         },
     )
     global_figure.update_yaxes(range=[0, 10], dtick=1)
-    st.plotly_chart(global_figure, use_container_width=True)
+    st.plotly_chart(
+        global_figure,
+        use_container_width=True,
+        key=f"evolution_general_state_{selected_cycle_id}",
+    )
     st.info(cycle_outcome_indicator(chart_data))
 
     comments = [
