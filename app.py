@@ -2572,7 +2572,11 @@ def render_therapeutic_cycles_panel_section() -> None:
             labels={"session_number": "Sesión", "eva_pre": "Intensidad actual"},
         )
         intensity_figure.update_yaxes(range=[0, 10], dtick=1)
-        st.plotly_chart(intensity_figure, use_container_width=True)
+        st.plotly_chart(
+            intensity_figure,
+            use_container_width=True,
+            key=f"professional_cycle_intensity_{selected_cycle_id}",
+        )
 
         global_figure = px.line(
             chart_data,
@@ -2586,7 +2590,11 @@ def render_therapeutic_cycles_panel_section() -> None:
             },
         )
         global_figure.update_yaxes(range=[0, 10], dtick=1)
-        st.plotly_chart(global_figure, use_container_width=True)
+        st.plotly_chart(
+            global_figure,
+            use_container_width=True,
+            key=f"professional_cycle_general_state_{selected_cycle_id}",
+        )
 
         comments = [
             fix_visible_encoding(str(comment).strip())
