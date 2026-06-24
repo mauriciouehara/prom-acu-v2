@@ -146,7 +146,7 @@ def render_welcome_step() -> None:
                 "Nueva consulta de paciente ya registrado"
             )
             st.session_state["new_problem_existing_patient"] = True
-            st.session_state["guided_step"] = "consent"
+            st.session_state["guided_step"] = "returning_patient_search"
             st.rerun()
         st.markdown(
             '<p class="welcome-card-help">Fue atendido anteriormente y ahora '
@@ -171,6 +171,16 @@ def option_index(options: list[str], selected: str | None) -> int | None:
     if selected in options:
         return options.index(selected)
     return None
+
+
+def fix_visible_encoding(value):
+    """Repair common UTF-8 mojibake only for text rendered on screen."""
+    if not isinstance(value, str) or not any(marker in value for marker in ("Ã", "Â")):
+        return value
+    try:
+        return value.encode("latin1").decode("utf-8")
+    except UnicodeError:
+        return value
 
 
 def render_patient_navigation(
@@ -299,6 +309,14 @@ def render_personal_data_step() -> None:
     hide_sidebar()
     st.title("Datos personales")
     st.success("Perfecto. Vamos a completar una breve evaluación.")
+    existing_patient_selected = bool(
+        st.session_state.get("selected_existing_patient_id")
+    )
+    if existing_patient_selected:
+        st.info(
+            "Paciente existente seleccionado. No es necesario volver a mostrar "
+            "DNI ni teléfono completos."
+        )
 
     saved_personal_data = st.session_state.get("guided_personal_data", {})
     guided_name = st.text_input(
@@ -360,10 +378,11 @@ def render_personal_data_step() -> None:
         )
 
     def continue_from_personal_data() -> bool:
+        needs_identity_fields = not existing_patient_selected
         if (
             not guided_name.strip()
-            or not guided_dni.strip()
-            or not guided_phone.strip()
+            or (needs_identity_fields and not guided_dni.strip())
+            or (needs_identity_fields and not guided_phone.strip())
             or not guided_age.strip().isdigit()
             or int(guided_age.strip()) > 120
             or not guided_sex
@@ -582,6 +601,274 @@ def ensure_guided_evaluations_table() -> None:
         for column_name in ("dni", "phone", "email", "consultation_type"):
             if column_name not in existing_columns:
                 connection.execute(f"ALTER TABLE guided_evaluations ADD COLUMN {column_name} TEXT")
+        if "therapeutic_cycle_id" not in existing_columns:
+            connection.execute(
+                "ALTER TABLE guided_evaluations ADD COLUMN therapeutic_cycle_id INTEGER"
+            )
+
+
+def ensure_therapeutic_cycles_schema() -> None:
+    """Create therapeutic-cycle storage and attach legacy sessions safely."""
+    ensure_guided_evaluations_table()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS therapeutic_cycles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id INTEGER NOT NULL,
+                fecha_inicio TEXT NOT NULL,
+                tipo_consulta TEXT NOT NULL,
+                main_reason TEXT,
+                main_problem TEXT,
+                status TEXT NOT NULL DEFAULT 'activo'
+                    CHECK (status IN ('activo', 'cerrado')),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+            )
+            """
+        )
+        session_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(sessions)").fetchall()
+        }
+        if "therapeutic_cycle_id" not in session_columns:
+            connection.execute(
+                "ALTER TABLE sessions ADD COLUMN therapeutic_cycle_id INTEGER"
+            )
+
+        patients = connection.execute(
+            """
+            SELECT id, created_at, clinical_category, diagnosis, main_complaint
+            FROM patients
+            ORDER BY id
+            """
+        ).fetchall()
+        for patient in patients:
+            existing_cycle = connection.execute(
+                """
+                SELECT id
+                FROM therapeutic_cycles
+                WHERE patient_id = ?
+                ORDER BY id
+                LIMIT 1
+                """,
+                (int(patient["id"]),),
+            ).fetchone()
+            if existing_cycle is None:
+                first_session = connection.execute(
+                    """
+                    SELECT date
+                    FROM sessions
+                    WHERE patient_id = ?
+                    ORDER BY date ASC, session_number ASC, id ASC
+                    LIMIT 1
+                    """,
+                    (int(patient["id"]),),
+                ).fetchone()
+                fecha_inicio = (
+                    first_session["date"]
+                    if first_session and first_session["date"]
+                    else str(patient["created_at"] or date.today().isoformat())[:10]
+                )
+                connection.execute(
+                    """
+                    INSERT INTO therapeutic_cycles (
+                        patient_id, fecha_inicio, tipo_consulta,
+                        main_reason, main_problem, status
+                    ) VALUES (?, ?, ?, ?, ?, 'activo')
+                    """,
+                    (
+                        int(patient["id"]),
+                        fecha_inicio,
+                        "Consulta inicial actual",
+                        patient["clinical_category"] or patient["diagnosis"],
+                        patient["main_complaint"],
+                    ),
+                )
+
+        unassigned_sessions = connection.execute(
+            """
+            SELECT id, patient_id
+            FROM sessions
+            WHERE therapeutic_cycle_id IS NULL
+            ORDER BY patient_id, session_number, date, id
+            """
+        ).fetchall()
+        for session in unassigned_sessions:
+            cycle = connection.execute(
+                """
+                SELECT id
+                FROM therapeutic_cycles
+                WHERE patient_id = ?
+                ORDER BY id
+                LIMIT 1
+                """,
+                (int(session["patient_id"]),),
+            ).fetchone()
+            if cycle:
+                connection.execute(
+                    """
+                    UPDATE sessions
+                    SET therapeutic_cycle_id = ?
+                    WHERE id = ?
+                    """,
+                    (int(cycle["id"]), int(session["id"])),
+                )
+
+
+def get_patient_cycles(patient_id: int, *, active_only: bool = False) -> list[dict]:
+    """Return therapeutic cycles for one patient."""
+    ensure_therapeutic_cycles_schema()
+    where_status = "AND status = 'activo'" if active_only else ""
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            f"""
+            SELECT *
+            FROM therapeutic_cycles
+            WHERE patient_id = ?
+            {where_status}
+            ORDER BY fecha_inicio DESC, id DESC
+            """,
+            (patient_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def create_therapeutic_cycle(
+    patient_id: int,
+    consultation_type: str,
+    main_reason: str,
+    main_problem: str,
+    *,
+    status: str = "activo",
+) -> int:
+    """Create a therapeutic cycle for a patient and return its identifier."""
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO therapeutic_cycles (
+                patient_id, fecha_inicio, tipo_consulta,
+                main_reason, main_problem, status
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                patient_id,
+                date.today().isoformat(),
+                consultation_type,
+                main_reason,
+                main_problem,
+                status,
+            ),
+        )
+        return int(cursor.lastrowid)
+
+
+def assign_session_to_cycle(session_id: int, cycle_id: int) -> None:
+    """Attach an existing session record to a therapeutic cycle."""
+    ensure_therapeutic_cycles_schema()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.execute(
+            "UPDATE sessions SET therapeutic_cycle_id = ? WHERE id = ?",
+            (cycle_id, session_id),
+        )
+
+
+def close_therapeutic_cycle(cycle_id: int) -> None:
+    """Mark a therapeutic cycle as closed after clinical discharge."""
+    ensure_therapeutic_cycles_schema()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.execute(
+            "UPDATE therapeutic_cycles SET status = 'cerrado' WHERE id = ?",
+            (cycle_id,),
+        )
+
+
+def get_cycle_sessions(cycle_id: int) -> pd.DataFrame:
+    """Return sessions associated with one therapeutic cycle."""
+    ensure_therapeutic_cycles_schema()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        return pd.read_sql_query(
+            """
+            SELECT *
+            FROM sessions
+            WHERE therapeutic_cycle_id = ?
+            ORDER BY session_number ASC, date ASC, id ASC
+            """,
+            connection,
+            params=(cycle_id,),
+        )
+
+
+def cycle_label(cycle: dict) -> str:
+    """Build a visible cycle label without exposing direct identifiers."""
+    fecha_inicio = cycle.get("fecha_inicio") or "Sin fecha"
+    motivo = fix_visible_encoding(cycle.get("main_reason") or "Sin motivo")
+    problema = fix_visible_encoding(cycle.get("main_problem") or "Sin problema")
+    status = cycle.get("status") or "activo"
+    return f"Ciclo {cycle['id']} · {fecha_inicio} · {motivo} · {problema} · {status}"
+
+
+def find_existing_patient_for_guided_data(personal_data: dict) -> int | None:
+    """Find an already registered patient using exact DNI, phone, or name."""
+    patients = get_patients()
+    if patients.empty:
+        return None
+
+    dni = str(personal_data.get("dni") or "").strip()
+    phone_digits = "".join(
+        character for character in str(personal_data.get("phone") or "")
+        if character.isdigit()
+    )
+    name = str(personal_data.get("name") or "").strip().casefold()
+
+    for _, row in patients.iterrows():
+        row_dni = str(row.get("dni") or "").strip()
+        row_phone_digits = "".join(
+            character for character in str(row.get("phone") or "")
+            if character.isdigit()
+        )
+        row_name = str(row.get("name") or "").strip().casefold()
+        if dni and row_dni == dni:
+            return int(row["id"])
+        if phone_digits and row_phone_digits == phone_digits:
+            return int(row["id"])
+        if name and row_name == name:
+            return int(row["id"])
+    return None
+
+
+def ensure_patient_for_guided_evaluation(
+    personal_data: dict,
+    problem_details: dict,
+) -> int:
+    """Use the selected patient or create one for a completed intake."""
+    selected_patient_id = st.session_state.get("selected_existing_patient_id")
+    if selected_patient_id:
+        return int(selected_patient_id)
+
+    existing_patient_id = find_existing_patient_for_guided_data(personal_data)
+    if existing_patient_id:
+        return existing_patient_id
+
+    age_value = str(personal_data.get("age") or "0").strip()
+    patient_id = add_patient(
+        name=str(personal_data.get("name") or "Sin nombre"),
+        dni=str(personal_data.get("dni") or f"EVAL-{datetime.now().timestamp():.0f}"),
+        age=int(age_value) if age_value.isdigit() else 0,
+        sex=str(personal_data.get("sex") or "Sin completar"),
+        phone=str(personal_data.get("phone") or personal_data.get("email") or ""),
+        diagnosis=str(problem_details.get("problem") or "Sin completar"),
+        main_complaint=str(problem_details.get("problem") or "Sin completar"),
+        assigned_scale="EVA",
+        clinical_category=str(
+            st.session_state.get("selected_initial_category", "Sin completar")
+        ),
+        clinical_subcategory=str(problem_details.get("problem") or "Sin completar"),
+        suggested_prom="Pendiente de clasificacion",
+        care_origin="Pendiente de clasificacion",
+    )
+    return int(patient_id)
 
 
 def load_completed_guided_evaluations() -> list[dict]:
@@ -635,6 +922,14 @@ def store_completed_guided_evaluation() -> None:
         medication_related = "Sin completar"
         medication_name = None
     ensure_guided_evaluations_table()
+    patient_id = ensure_patient_for_guided_evaluation(personal_data, problem_details)
+    cycle_id = create_therapeutic_cycle(
+        patient_id=patient_id,
+        consultation_type=st.session_state.get("tipo_consulta", "Paciente nuevo"),
+        main_reason=st.session_state.get("selected_initial_category", "Sin completar"),
+        main_problem=problem_details.get("problem", "Sin completar"),
+    )
+    st.session_state["current_therapeutic_cycle_id"] = cycle_id
     with sqlite3.connect(database_module.DB_PATH) as connection:
         connection.execute(
             """
@@ -642,8 +937,9 @@ def store_completed_guided_evaluation() -> None:
                 completed_at, name, has_dni, has_contact, dni, phone, email,
                 consultation_type, main_reason, main_problem, duration,
                 current_impact, global_functional_score, daily_limitation,
-                medication_related, medication_name, treatment_expectations
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                medication_related, medication_name, treatment_expectations,
+                therapeutic_cycle_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 datetime.now().isoformat(timespec="minutes"),
@@ -663,6 +959,7 @@ def store_completed_guided_evaluation() -> None:
                 medication_related,
                 medication_name,
                 json.dumps(treatment_expectations.get("expectations", []), ensure_ascii=False),
+                cycle_id,
             ),
         )
     st.session_state["guided_evaluation_recorded"] = True
@@ -781,6 +1078,13 @@ def search_followup_patients(query: str) -> list[dict]:
                 suggested_prom="Pendiente de clasificacion",
                 care_origin="Pendiente de clasificacion",
             )
+            create_therapeutic_cycle(
+                patient_id=patient_id,
+                consultation_type=guided_row["consultation_type"]
+                or "Consulta inicial actual",
+                main_reason=guided_row["main_reason"] or "Sin completar",
+                main_problem=guided_row["main_problem"] or "Sin completar",
+            )
             refreshed_patients = get_patients()
             created_patient = refreshed_patients.loc[
                 refreshed_patients["id"] == patient_id
@@ -788,6 +1092,91 @@ def search_followup_patients(query: str) -> list[dict]:
             add_match(created_patient)
 
     return sorted(matches, key=lambda patient: patient["label"].casefold())
+
+
+def render_returning_patient_search_step() -> None:
+    """Select an existing patient before starting a new therapeutic cycle."""
+    hide_sidebar()
+    st.title("Nueva consulta de paciente ya registrado")
+    st.write(
+        "Busque el paciente existente para iniciar una evaluación completa "
+        "como nuevo ciclo terapéutico."
+    )
+
+    search_query = st.text_input(
+        "Buscar paciente por DNI, nombre o teléfono/contacto",
+        key="returning_patient_search_query",
+    )
+    if st.button("Buscar paciente", type="primary", use_container_width=True):
+        if not search_query.strip():
+            st.error("Ingrese DNI, nombre o teléfono/contacto para buscar.")
+        else:
+            st.session_state["returning_patient_search_results"] = (
+                search_followup_patients(search_query)
+            )
+
+    results = st.session_state.get("returning_patient_search_results")
+    selected_label = None
+    if results is not None:
+        if not results:
+            st.warning("No encontramos un paciente registrado con esos datos.")
+        else:
+            selected_label = st.selectbox(
+                "Seleccione paciente",
+                [patient["label"] for patient in results],
+                key="returning_patient_selected_label",
+            )
+            selected_patient = next(
+                patient for patient in results if patient["label"] == selected_label
+            )
+            cycles = get_patient_cycles(int(selected_patient["id"]))
+            st.info(f"Ciclos registrados para este paciente: {len(cycles)}")
+
+    back_column, continue_column = st.columns(2)
+    with back_column:
+        if st.button("Atrás", use_container_width=True):
+            clear_returning_patient_flow()
+            st.session_state["guided_step"] = "welcome"
+            st.rerun()
+    with continue_column:
+        if results and st.button(
+            "Iniciar nueva consulta",
+            type="primary",
+            use_container_width=True,
+        ):
+            selected_patient = next(
+                patient for patient in results if patient["label"] == selected_label
+            )
+            patient = get_patient(int(selected_patient["id"]))
+            st.session_state["selected_existing_patient_id"] = int(
+                selected_patient["id"]
+            )
+            st.session_state["guided_personal_data"] = {
+                "name": patient["name"] if patient else selected_patient["name"],
+                "dni": "",
+                "phone": "",
+                "email": "",
+                "age": int(patient["age"]) if patient else "",
+                "sex": patient["sex"] if patient else "",
+            }
+            st.session_state["tipo_consulta"] = (
+                "Nueva consulta de paciente ya registrado"
+            )
+            st.session_state["new_problem_existing_patient"] = True
+            st.session_state["guided_step"] = "consent"
+            st.rerun()
+
+
+def clear_returning_patient_flow() -> None:
+    """Clear temporary returning-patient search data."""
+    for key in (
+        "returning_patient_search_query",
+        "returning_patient_search_results",
+        "returning_patient_selected_label",
+        "selected_existing_patient_id",
+        "current_therapeutic_cycle_id",
+    ):
+        st.session_state.pop(key, None)
 
 
 def format_sessions_for_followup(sessions: pd.DataFrame) -> pd.DataFrame:
@@ -818,6 +1207,8 @@ def format_sessions_for_followup(sessions: pd.DataFrame) -> pd.DataFrame:
             "Comentario": sessions["notes"].fillna("") if "notes" in sessions else "",
         }
     )
+    for column in table.select_dtypes(include="object").columns:
+        table[column] = table[column].map(fix_visible_encoding)
     return table
 
 
@@ -856,16 +1247,36 @@ def render_followup_search_step() -> None:
             selected_patient = next(
                 patient for patient in results if patient["label"] == selected_label
             )
-            sessions = get_patient_sessions(selected_patient["id"])
-            st.markdown("**Sesiones registradas actuales**")
-            if sessions.empty:
-                st.info("Este paciente todavía no tiene sesiones registradas.")
-            else:
-                st.dataframe(
-                    format_sessions_for_followup(sessions),
-                    hide_index=True,
-                    use_container_width=True,
+            active_cycles = get_patient_cycles(
+                int(selected_patient["id"]),
+                active_only=True,
+            )
+            if not active_cycles:
+                st.warning(
+                    "Este paciente no tiene ciclos terapéuticos activos. "
+                    "Inicie una nueva consulta para abrir un ciclo."
                 )
+            else:
+                selected_cycle_label = st.selectbox(
+                    "Seleccione ciclo terapéutico activo",
+                    [cycle_label(cycle) for cycle in active_cycles],
+                    key="followup_selected_cycle_label",
+                )
+                selected_cycle = next(
+                    cycle
+                    for cycle in active_cycles
+                    if cycle_label(cycle) == selected_cycle_label
+                )
+                sessions = get_cycle_sessions(int(selected_cycle["id"]))
+                st.markdown("**Seguimientos registrados en este ciclo**")
+                if sessions.empty:
+                    st.info("Este ciclo todavía no tiene seguimientos registrados.")
+                else:
+                    st.dataframe(
+                        format_sessions_for_followup(sessions),
+                        hide_index=True,
+                        use_container_width=True,
+                    )
 
     back_column, continue_column = st.columns(2)
     with back_column:
@@ -881,7 +1292,24 @@ def render_followup_search_step() -> None:
             selected_patient = next(
                 patient for patient in results if patient["label"] == selected_label
             )
+            active_cycles = get_patient_cycles(
+                int(selected_patient["id"]),
+                active_only=True,
+            )
+            selected_cycle_label = st.session_state.get("followup_selected_cycle_label")
+            selected_cycle = next(
+                (
+                    cycle
+                    for cycle in active_cycles
+                    if cycle_label(cycle) == selected_cycle_label
+                ),
+                None,
+            )
+            if selected_cycle is None:
+                st.error("Seleccione un ciclo terapéutico activo.")
+                return
             st.session_state["followup_patient"] = selected_patient
+            st.session_state["followup_cycle"] = selected_cycle
             st.session_state["guided_step"] = "followup_form"
             st.rerun()
 
@@ -893,21 +1321,29 @@ def render_followup_form_step() -> None:
     if not patient:
         st.session_state["guided_step"] = "followup_search"
         st.rerun()
+    cycle = st.session_state.get("followup_cycle")
+    if not cycle:
+        st.session_state["guided_step"] = "followup_search"
+        st.rerun()
 
     patient_id = int(patient["id"])
-    sessions = get_patient_sessions(patient_id)
+    all_sessions = get_patient_sessions(patient_id)
+    cycle_sessions = get_cycle_sessions(int(cycle["id"]))
     next_session_number = (
-        int(sessions["session_number"].max()) + 1 if not sessions.empty else 1
+        int(all_sessions["session_number"].max()) + 1
+        if not all_sessions.empty
+        else 1
     )
 
     st.title("Seguimiento de evolución")
     st.caption(f"Paciente seleccionado: {patient['name']}")
-    st.markdown("**Historial de sesiones**")
-    if sessions.empty:
-        st.info("Este paciente todavía no tiene sesiones registradas.")
+    st.caption(f"Ciclo seleccionado: {cycle_label(cycle)}")
+    st.markdown("**Seguimientos de este ciclo**")
+    if cycle_sessions.empty:
+        st.info("Este ciclo todavía no tiene seguimientos registrados.")
     else:
         st.dataframe(
-            format_sessions_for_followup(sessions),
+            format_sessions_for_followup(cycle_sessions),
             hide_index=True,
             use_container_width=True,
         )
@@ -995,7 +1431,7 @@ def render_followup_form_step() -> None:
         }
 
         try:
-            add_session(
+            session_id = add_session(
                 patient_id=patient_id,
                 session_number=next_session_number,
                 date=session_date.isoformat(),
@@ -1010,6 +1446,7 @@ def render_followup_form_step() -> None:
                 adverse_event_description=adverse_description,
                 notes=notes,
             )
+            assign_session_to_cycle(session_id, int(cycle["id"]))
         except sqlite3.Error as error:
             st.error(f"No se pudo guardar el seguimiento: {error}")
             return
@@ -1022,7 +1459,9 @@ def clear_followup_flow() -> None:
         "followup_search_query",
         "followup_search_results",
         "followup_selected_label",
+        "followup_selected_cycle_label",
         "followup_patient",
+        "followup_cycle",
         "tipo_consulta",
     ):
         st.session_state.pop(key, None)
@@ -1963,6 +2402,113 @@ def render_patient_followup_panel_section() -> None:
         "ni correo electrónico completos."
     )
 
+
+def render_therapeutic_cycles_panel_section() -> None:
+    """Show therapeutic cycles and their follow-up counts for professionals."""
+    st.subheader("Ciclos terapéuticos por paciente")
+    ensure_therapeutic_cycles_schema()
+    patients = get_patients()
+    if patients.empty:
+        st.info("Todavía no hay pacientes registrados.")
+        return
+
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        cycle_rows = connection.execute(
+            """
+            SELECT
+                cycle.id,
+                cycle.patient_id,
+                cycle.fecha_inicio,
+                cycle.tipo_consulta,
+                cycle.main_reason,
+                cycle.main_problem,
+                cycle.status,
+                COUNT(session.id) AS session_count
+            FROM therapeutic_cycles AS cycle
+            LEFT JOIN sessions AS session
+                ON session.therapeutic_cycle_id = cycle.id
+            GROUP BY cycle.id
+            ORDER BY cycle.fecha_inicio DESC, cycle.id DESC
+            """
+        ).fetchall()
+
+    if not cycle_rows:
+        st.info("Todavía no hay ciclos terapéuticos registrados.")
+        return
+
+    patient_lookup = {
+        int(row["id"]): (
+            f"{str(row.get('name') or 'Sin nombre').strip()} "
+            f"({str(row['patient_code'])})"
+        )
+        for _, row in patients.iterrows()
+    }
+    cycle_totals: dict[int, int] = {}
+    for cycle in cycle_rows:
+        patient_id = int(cycle["patient_id"])
+        cycle_totals[patient_id] = cycle_totals.get(patient_id, 0) + 1
+
+    summary_rows = []
+    cycle_options: dict[str, int] = {}
+    for cycle in cycle_rows:
+        cycle_dict = dict(cycle)
+        patient_id = int(cycle_dict["patient_id"])
+        patient_label = patient_lookup.get(patient_id, f"Paciente {patient_id}")
+        summary_rows.append(
+            {
+                "Paciente": patient_label,
+                "Ciclo ID": int(cycle_dict["id"]),
+                "Ciclos registrados": cycle_totals.get(patient_id, 0),
+                "Fecha de inicio": cycle_dict["fecha_inicio"],
+                "Tipo de consulta": fix_visible_encoding(
+                    cycle_dict["tipo_consulta"] or "Sin completar"
+                ),
+                "Motivo principal": fix_visible_encoding(
+                    cycle_dict["main_reason"] or "Sin completar"
+                ),
+                "Problema principal": fix_visible_encoding(
+                    cycle_dict["main_problem"] or "Sin completar"
+                ),
+                "Estado del ciclo": cycle_dict["status"],
+                "Seguimientos de ese ciclo": int(cycle_dict["session_count"]),
+            }
+        )
+        cycle_options[
+            f"{patient_label} · {cycle_label(cycle_dict)}"
+        ] = int(cycle_dict["id"])
+
+    st.dataframe(
+        pd.DataFrame(summary_rows),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    selected_cycle_label = st.selectbox(
+        "Ver seguimientos de un ciclo",
+        list(cycle_options.keys()),
+        key="professional_cycle_detail",
+    )
+    selected_cycle_id = cycle_options[selected_cycle_label]
+    selected_cycle = next(
+        dict(cycle) for cycle in cycle_rows if int(cycle["id"]) == selected_cycle_id
+    )
+    if selected_cycle["status"] == "activo":
+        if st.button("Cerrar ciclo seleccionado (alta)", use_container_width=True):
+            close_therapeutic_cycle(selected_cycle_id)
+            st.success("Ciclo terapéutico cerrado.")
+            st.rerun()
+    sessions = get_cycle_sessions(selected_cycle_id)
+    if sessions.empty:
+        st.info("Este ciclo todavía no tiene seguimientos registrados.")
+    else:
+        st.dataframe(
+            format_sessions_for_followup(sessions),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+
 def render_professional_panel() -> None:
     """Render the persistent professional overview of completed evaluations."""
     hide_sidebar()
@@ -1973,6 +2519,8 @@ def render_professional_panel() -> None:
     st.title("Panel profesional")
     st.subheader("Dr. Mauricio Uehara - PROM-ACU")
     render_patient_followup_panel_section()
+    st.divider()
+    render_therapeutic_cycles_panel_section()
     st.divider()
 
     try:
@@ -2268,6 +2816,12 @@ def render_patient_registration() -> None:
                 suggested_prom=suggested_prom,
                 care_origin=care_origin,
             )
+            create_therapeutic_cycle(
+                patient_id=patient_id,
+                consultation_type="Consulta inicial actual",
+                main_reason=category,
+                main_problem=subcategory,
+            )
             patient = get_patient(patient_id)
             patient_code = patient["patient_code"] if patient else "No disponible"
             st.success(
@@ -2291,6 +2845,24 @@ def render_session_registration() -> None:
     options = patient_options(patients)
     selected_label = st.selectbox("Seleccionar paciente", list(options.keys()))
     patient_id = options[selected_label]
+    patient = get_patient(patient_id)
+    active_cycles = get_patient_cycles(patient_id, active_only=True)
+    if not active_cycles and patient:
+        create_therapeutic_cycle(
+            patient_id=patient_id,
+            consultation_type="Consulta inicial actual",
+            main_reason=patient["clinical_category"] or patient["diagnosis"],
+            main_problem=patient["main_complaint"],
+        )
+        active_cycles = get_patient_cycles(patient_id, active_only=True)
+    selected_cycle_label = st.selectbox(
+        "Ciclo terapéutico activo",
+        [cycle_label(cycle) for cycle in active_cycles],
+        key="professional_session_cycle",
+    )
+    selected_cycle = next(
+        cycle for cycle in active_cycles if cycle_label(cycle) == selected_cycle_label
+    )
     existing_sessions = get_patient_sessions(patient_id)
     suggested_number = (
         int(existing_sessions["session_number"].max()) + 1
@@ -2399,7 +2971,7 @@ def render_session_registration() -> None:
             return
 
         try:
-            add_session(
+            session_id = add_session(
                 patient_id=patient_id,
                 session_number=int(session_number),
                 date=session_date.isoformat(),
@@ -2414,6 +2986,7 @@ def render_session_registration() -> None:
                 adverse_event_description=adverse_description,
                 notes=notes,
             )
+            assign_session_to_cycle(session_id, int(selected_cycle["id"]))
             st.success("Sesión registrada correctamente.")
         except sqlite3.IntegrityError:
             st.error("No se pudo guardar la sesión. Verifique los datos.")
@@ -3427,6 +4000,7 @@ def main() -> None:
     """Initialize storage and render the selected application page."""
     try:
         init_db()
+        ensure_therapeutic_cycles_schema()
     except sqlite3.Error as error:
         st.error(f"No se pudo inicializar la base de datos: {error}")
         st.stop()
@@ -3438,6 +4012,10 @@ def main() -> None:
 
     if guided_step == "professional_panel":
         render_professional_panel()
+        return
+
+    if guided_step == "returning_patient_search":
+        render_returning_patient_search_step()
         return
 
     if guided_step == "followup_search":
