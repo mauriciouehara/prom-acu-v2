@@ -2601,6 +2601,226 @@ def render_therapeutic_cycles_panel_section() -> None:
             st.info("No hay comentarios registrados para este ciclo.")
 
 
+def cycle_display_date(value: object) -> str:
+    """Format cycle dates for professional clinical views."""
+    parsed_date = pd.to_datetime(value, errors="coerce")
+    if pd.isna(parsed_date):
+        return str(value or "Sin fecha")
+    return parsed_date.strftime("%d/%m/%Y")
+
+
+def load_patient_cycle_summary(patient_id: int) -> list[dict]:
+    """Load cycle rows with follow-up counts for one patient."""
+    ensure_therapeutic_cycles_schema()
+    with sqlite3.connect(database_module.DB_PATH) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            """
+            SELECT
+                cycle.id,
+                cycle.patient_id,
+                cycle.fecha_inicio,
+                cycle.tipo_consulta,
+                cycle.main_reason,
+                cycle.main_problem,
+                cycle.status,
+                COUNT(session.id) AS session_count
+            FROM therapeutic_cycles AS cycle
+            LEFT JOIN sessions AS session
+                ON session.therapeutic_cycle_id = cycle.id
+            WHERE cycle.patient_id = ?
+            GROUP BY cycle.id
+            ORDER BY cycle.fecha_inicio ASC, cycle.id ASC
+            """,
+            (patient_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def cycle_outcome_indicator(sessions: pd.DataFrame) -> str:
+    """Summarize cycle outcome from first and last current intensity values."""
+    if sessions.empty or "eva_pre" not in sessions:
+        return "Resultado global del ciclo: Sin seguimientos suficientes"
+    intensity_values = pd.to_numeric(sessions["eva_pre"], errors="coerce").dropna()
+    if len(intensity_values) < 2:
+        return "Resultado global del ciclo: Sin seguimientos suficientes"
+
+    initial_intensity = float(intensity_values.iloc[0])
+    final_intensity = float(intensity_values.iloc[-1])
+    difference = final_intensity - initial_intensity
+    if abs(difference) < 1:
+        result = "🟡 Sin cambios"
+    elif final_intensity < initial_intensity:
+        result = "🟢 Mejoró"
+    else:
+        result = "🔴 Empeoró"
+    return (
+        "Resultado global del ciclo: "
+        f"{result} "
+        f"(inicial {initial_intensity:.1f}, final {final_intensity:.1f})"
+    )
+
+
+def render_patient_evolution_history_section() -> None:
+    """Render the longitudinal clinical history across therapeutic cycles."""
+    st.subheader("HISTORIA CLÍNICA EVOLUTIVA DEL PACIENTE")
+    patients = get_patients()
+    if patients.empty:
+        st.info("Todavía no hay pacientes registrados.")
+        return
+
+    patient_options_by_label = professional_patient_options(patients)
+    selected_patient_label = st.selectbox(
+        "Ver paciente",
+        list(patient_options_by_label.keys()),
+        key="evolution_history_patient",
+    )
+    selected_patient_id = patient_options_by_label[selected_patient_label]
+    cycles = load_patient_cycle_summary(selected_patient_id)
+    if not cycles:
+        st.info("Este paciente todavía no tiene ciclos terapéuticos registrados.")
+        return
+
+    cycle_dates = pd.to_datetime(
+        [cycle["fecha_inicio"] for cycle in cycles],
+        errors="coerce",
+    ).dropna()
+    treated_reasons = sorted(
+        {
+            fix_visible_encoding(cycle["main_reason"] or "Sin completar")
+            for cycle in cycles
+        }
+    )
+    total_followups = sum(int(cycle["session_count"]) for cycle in cycles)
+    active_cycle_count = sum(1 for cycle in cycles if cycle["status"] == "activo")
+    closed_cycle_count = sum(1 for cycle in cycles if cycle["status"] == "cerrado")
+    first_consultation = (
+        cycle_dates.min().strftime("%d/%m/%Y") if not cycle_dates.empty else "Sin fecha"
+    )
+    last_consultation = (
+        cycle_dates.max().strftime("%d/%m/%Y") if not cycle_dates.empty else "Sin fecha"
+    )
+
+    st.markdown("**Resumen global del paciente**")
+    metric_columns = st.columns(4)
+    metric_columns[0].metric("Ciclos terapéuticos", len(cycles))
+    metric_columns[1].metric("Seguimientos totales", total_followups)
+    metric_columns[2].metric("Ciclos activos", active_cycle_count)
+    metric_columns[3].metric("Ciclos cerrados", closed_cycle_count)
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "Primera consulta registrada": first_consultation,
+                    "Última consulta registrada": last_consultation,
+                    "Motivos tratados": ", ".join(treated_reasons),
+                }
+            ]
+        ),
+        hide_index=True,
+        use_container_width=True,
+    )
+
+    st.markdown("**Línea de tiempo de ciclos terapéuticos**")
+    for cycle in cycles:
+        with st.container(border=True):
+            st.write(f"**{cycle_display_date(cycle['fecha_inicio'])}**")
+            st.write(f"**Ciclo {int(cycle['id'])}**")
+            st.write(
+                "Tipo de consulta: "
+                f"{fix_visible_encoding(cycle['tipo_consulta'] or 'Sin completar')}"
+            )
+            st.write(
+                "Motivo: "
+                f"{fix_visible_encoding(cycle['main_reason'] or 'Sin completar')}"
+            )
+            st.write(
+                "Problema: "
+                f"{fix_visible_encoding(cycle['main_problem'] or 'Sin completar')}"
+            )
+            st.write(f"Seguimientos: {int(cycle['session_count'])}")
+            st.write(f"Estado: {str(cycle['status']).capitalize()}")
+            st.divider()
+
+    cycle_table = pd.DataFrame(
+        [
+            {
+                "Ciclo ID": int(cycle["id"]),
+                "Fecha de inicio": cycle_display_date(cycle["fecha_inicio"]),
+                "Tipo de consulta": fix_visible_encoding(
+                    cycle["tipo_consulta"] or "Sin completar"
+                ),
+                "Motivo principal": fix_visible_encoding(
+                    cycle["main_reason"] or "Sin completar"
+                ),
+                "Problema principal": fix_visible_encoding(
+                    cycle["main_problem"] or "Sin completar"
+                ),
+                "Estado del ciclo": cycle["status"],
+                "Cantidad de seguimientos": int(cycle["session_count"]),
+            }
+            for cycle in cycles
+        ]
+    )
+    st.dataframe(cycle_table, hide_index=True, use_container_width=True)
+
+    cycle_options = {cycle_label(cycle): int(cycle["id"]) for cycle in cycles}
+    selected_cycle_label = st.selectbox(
+        "Ver evolución de ciclo",
+        list(cycle_options.keys()),
+        key="evolution_history_cycle",
+    )
+    selected_cycle_id = cycle_options[selected_cycle_label]
+    sessions = get_cycle_sessions(selected_cycle_id)
+    if sessions.empty:
+        st.info("Este ciclo todavía no tiene seguimientos registrados.")
+        return
+
+    st.dataframe(
+        format_sessions_for_followup(sessions),
+        hide_index=True,
+        use_container_width=True,
+    )
+    chart_data = sessions.copy().sort_values("session_number")
+    intensity_figure = px.line(
+        chart_data,
+        x="session_number",
+        y="eva_pre",
+        markers=True,
+        title="Intensidad actual por sesión",
+        labels={"session_number": "Sesión", "eva_pre": "Intensidad actual"},
+    )
+    intensity_figure.update_yaxes(range=[0, 10], dtick=1)
+    st.plotly_chart(intensity_figure, use_container_width=True)
+
+    global_figure = px.line(
+        chart_data,
+        x="session_number",
+        y="functional_impact",
+        markers=True,
+        title="Estado general por sesión",
+        labels={
+            "session_number": "Sesión",
+            "functional_impact": "Estado general últimos 7 días",
+        },
+    )
+    global_figure.update_yaxes(range=[0, 10], dtick=1)
+    st.plotly_chart(global_figure, use_container_width=True)
+    st.info(cycle_outcome_indicator(chart_data))
+
+    comments = [
+        fix_visible_encoding(str(comment).strip())
+        for comment in sessions.get("notes", pd.Series(dtype=str)).fillna("")
+        if str(comment).strip()
+    ]
+    st.markdown("**Comentarios registrados**")
+    if comments:
+        for comment in comments:
+            st.write(comment)
+    else:
+        st.info("No hay comentarios registrados para este ciclo.")
+
+
 def render_professional_panel() -> None:
     """Render the persistent professional overview of completed evaluations."""
     hide_sidebar()
@@ -2613,6 +2833,8 @@ def render_professional_panel() -> None:
     render_patient_followup_panel_section()
     st.divider()
     render_therapeutic_cycles_panel_section()
+    st.divider()
+    render_patient_evolution_history_section()
     st.divider()
 
     try:
